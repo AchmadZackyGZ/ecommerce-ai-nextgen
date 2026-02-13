@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  # 1. Database Utama (Relasional)
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextgen-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ecommerce_user
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: ecommerce_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nextgen-network
+
+  # 2. In-Memory Cache (Untuk Performa Super Cepat)
+  redis:
+    image: redis:7-alpine
+    container_name: nextgen-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nextgen-network
+
+  # 3. Load Balancer & Edge Router
+  traefik:
+    image: traefik:v3.0
+    container_name: nextgen-traefik
+    restart: always
+    command:
+      - "--api.insecure=true" # Mengaktifkan Dashboard UI Traefik
+      - "--providers.docker=true" # Traefik otomatis membaca container kita
+      - "--providers.docker.exposedbydefault=false" # Keamanan: Hanya expose yang kita mau
+      - "--entrypoints.web.address=:80" # Port web standar
+    ports:
+      - "80:80" # Port akses aplikasi kita nanti
+      - "8080:8080" # Port akses Dashboard Traefik
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro" # Akses Traefik ke Docker daemon
+    networks:
+      - nextgen-network
+
+# Setup Volume (Agar data tidak hilang saat laptop dimatikan)
+volumes:
+  postgres_data:
+  redis_data:
+
+# Setup Jaringan Internal (Agar Backend, Frontend, dan DB bisa saling ngobrol)
+networks:
+  nextgen-network:
+    driver: bridge

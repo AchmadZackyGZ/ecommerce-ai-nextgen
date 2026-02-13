@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: backend
+
+  # 1. Konfigurasi Koneksi ke PostgreSQL di Docker
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    username: ecommerce_user
+    password: supersecretpassword
+    driver-class-name: org.postgresql.Driver
+
+  # 2. Konfigurasi JPA / Hibernate (Pengatur Tabel Otomatis)
+  jpa:
+    hibernate:
+      ddl-auto: update # Ajaib! Spring Boot akan otomatis membuat/update tabel di DB nanti
+    show-sql: true # Agar kita bisa melihat query SQL yang berjalan di terminal (bagus untuk debug)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # 3. Konfigurasi Koneksi ke Redis di Docker
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# Mengatur port Backend kita agar jalan di port 8080 (atau 8081 jika 8080 dipakai Traefik)
+# Karena Traefik pakai 8080 untuk dashboard, kita set Spring Boot di 8081
+server:
+  port: 8081
