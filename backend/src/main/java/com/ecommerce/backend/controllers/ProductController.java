@@ -21,5 +21,5 @@ public class ProductController {
     @GetMapping
     public List<Product> getAllProducts() {
         return productRepository.findAll(); // Otomatis mengeksekusi "SELECT * FROM products"
+        }
     }
-}
