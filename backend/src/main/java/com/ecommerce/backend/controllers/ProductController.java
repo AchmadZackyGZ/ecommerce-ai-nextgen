@@ -1,25 +1,32 @@
 package com.ecommerce.backend.controllers;
 
-import com.ecommerce.backend.models.Product;
-import com.ecommerce.backend.repositories.ProductRepository;
+import com.ecommerce.backend.dtos.ProductRequest;
+import com.ecommerce.backend.dtos.ProductResponse;
+import com.ecommerce.backend.services.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController // Menandakan ini adalah API
-@RequestMapping("/api/products") // URL utama untuk controller ini
+@RestController
+@RequestMapping("/api/products")
 public class ProductController {
 
-    // Memanggil jembatan repository kita
     @Autowired
-    private ProductRepository productRepository;
+    private ProductService productService; // Sekarang kita panggil service nya, bukan database nya atau models nya!
 
-    // Endpoint untuk mengambil SEMUA data produk
-    @GetMapping
-    public List<Product> getAllProducts() {
-        return productRepository.findAll(); // Otomatis mengeksekusi "SELECT * FROM products"
-        }
+    // 1. Endpoint POST (Membuat produk baru)
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED) // Akan mengembalikan kode 201 Created
+    public ProductResponse createProduct(@RequestBody ProductRequest productRequest) {
+        return productService.createProduct(productRequest);
     }
+
+    // 2. Endpoint GET (Mengambil semua produk)
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public List<ProductResponse> getAllProducts() {
+        return productService.getAllProducts();
+    }
+}
