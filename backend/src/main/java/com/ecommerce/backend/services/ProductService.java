@@ -55,7 +55,7 @@ public class ProductService {
     // mengupdate product berdasarkan id
     public ProductResponse updateProduct(Long id, ProductRequest request) {
         Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
 
         // Update field yang diubah
         existingProduct.setName(request.getName());
@@ -73,7 +73,7 @@ public class ProductService {
     // menghapus product berdasarkan id
     public void deleteProduct(Long id) {
         Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
 
         productRepository.delete(existingProduct);
     }
