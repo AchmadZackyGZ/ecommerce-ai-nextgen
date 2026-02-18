@@ -48,4 +48,46 @@ public class ProductController {
 
         return ResponseEntity.ok(response);
     }
+
+    // 3. Endpoint GET by ID (Mengambil produk berdasarkan ID)
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProductResponse>> getProductById(@PathVariable Long id) {
+        ProductResponse productData = productService.getProductById(id);
+        
+        ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil mengambil data produk dengan ID: " + id)
+                .data(productData)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 4. Endpoint PUT (Mengupdate produk berdasarkan ID)
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(@PathVariable Long id,@RequestBody ProductRequest productRequest) {
+        ProductResponse updateData = productService.updateProduct(id, productRequest);
+
+        ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil mengupdate data produk dengan ID: " + id)
+                .data(updateData)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 5. Endpoint DELETE (Menghapus produk berdasarkan ID)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Object>> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+
+        ApiResponse<Object> response = ApiResponse.<Object>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil menghapus data produk dengan ID: " + id)
+                .data(null)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
 }

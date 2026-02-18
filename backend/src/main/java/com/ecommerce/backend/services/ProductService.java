@@ -36,10 +36,45 @@ public class ProductService {
     // mengambil semua product (READ Product)
     public List<ProductResponse> getAllProducts() {
         List<Product> products = productRepository.findAll();
+
         // mengubah list entity menjadi list response
         return products.stream()
                 .map(this::mapToResponse) // Ubah setiap Product menjadi ProductResponse
                 .collect(Collectors.toList());
+    }
+
+    // mengambil product berdasarkan id
+    public ProductResponse getProductById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+
+        return mapToResponse(product);
+    }
+
+    // mengupdate product berdasarkan id
+    public ProductResponse updateProduct(Long id, ProductRequest request) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+
+        // Update field yang diubah
+        existingProduct.setName(request.getName());
+        existingProduct.setDescription(request.getDescription());
+        existingProduct.setPrice(request.getPrice());
+        existingProduct.setStock(request.getStock());
+        existingProduct.setImageUrl(request.getImageUrl());
+
+        // Simpan perubahan ke database
+        Product updatedProduct = productRepository.save(existingProduct);
+
+        return mapToResponse(updatedProduct);
+    }
+
+    // menghapus product berdasarkan id
+    public void deleteProduct(Long id) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+
+        productRepository.delete(existingProduct);
     }
 
     // fungsi helper utk mengubah entity ke response
