@@ -6,6 +6,7 @@ import com.ecommerce.backend.models.Product;
 import com.ecommerce.backend.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,7 +47,7 @@ public class ProductService {
     // mengambil product berdasarkan id
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produk tidak ditemukan dengan ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
 
         return mapToResponse(product);
     }
