@@ -33,4 +33,16 @@ public class GlobalExceptionHandler {
         
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    // 3. Menangkap error akibat input user yang tidak valid (400)
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBadRequest(BadRequestException ex) {
+        ApiResponse<Object> response = ApiResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(ex.getMessage()) // Akan menampilkan "Anda tidak boleh mendaftar sebagai Admin!"
+                .data(null)
+                .build();
+        
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 }

@@ -2,6 +2,7 @@ package com.ecommerce.backend.services;
 
 import com.ecommerce.backend.dtos.UserRequest;
 import com.ecommerce.backend.dtos.UserResponse;
+import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.models.UserRole;
 import com.ecommerce.backend.repositories.UserRepository;
@@ -15,38 +16,49 @@ public class UserService {
     private UserRepository userRepository;
 
     // Method to create a new user based on the UserRequest DTO
-   public UserResponse registerUser(UserRequest request) {
-        // 1. Cek Email duplikat (Logic lama)
+  public UserResponse registerUser(UserRequest request) {
+        // 1. Cek Email duplikat
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email " + request.getEmail() + " sudah terdaftar!");
+            throw new BadRequestException("Email " + request.getEmail() + " sudah terdaftar!");
         }
 
-        // 2. VALIDASI ROLE (LOGIC BARU ANDA) 🔥
-        // Jika request role-nya kosong, otomatis jadi CUSTOMER
-        // Jika user mencoba daftar jadi ADMIN, UBAH PAKSA jadi CUSTOMER (atau lempar error)
+        // 2. VALIDASI ROLE (Mencegah pendaftaran Admin) 🔥
         UserRole roleToSave;
         try {
             roleToSave = UserRole.valueOf(request.getRole().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
-            // Jika user tidak isi role, atau isi ngawur, default ke CUSTOMER
+            // Jika user tidak isi role, atau isinya ngawur (misal "HACKER"), paksa jadi CUSTOMER
             roleToSave = UserRole.CUSTOMER;
         }
 
         // PERATURAN KERAS: Dilarang daftar jadi ADMIN lewat API ini!
         if (roleToSave == UserRole.ADMIN) {
-            throw new RuntimeException("Anda tidak boleh mendaftar sebagai Admin!");
+            throw new BadRequestException("Anda tidak boleh mendaftar sebagai Admin!");
         }
 
         // 3. Simpan User
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(request.getPassword())
-                .role(roleToSave) // Gunakan role yang sudah divalidasi
+                .password(request.getPassword()) // Ingat: Nanti di Sprint 7 ini akan kita enkripsi!
+                .role(roleToSave) 
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        return mapToResponse(savedUser); // Sesuaikan return mapping Anda
+        // 4. Kembalikan balasan yang rapi
+        return mapToResponse(savedUser); 
+    }
+
+    // Fungsi bantuan (Helper) untuk mengubah Entity User menjadi DTO UserResponse
+    // (PENTING: Kita tidak memasukkan password ke dalam response!)
+    private UserResponse mapToResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name()) // Mengubah Enum UserRole menjadi String
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 }
