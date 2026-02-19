@@ -3,6 +3,7 @@ package com.ecommerce.backend.services;
 import com.ecommerce.backend.dtos.UserRequest;
 import com.ecommerce.backend.dtos.UserResponse;
 import com.ecommerce.backend.models.User;
+import com.ecommerce.backend.models.UserRole;
 import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,33 +15,38 @@ public class UserService {
     private UserRepository userRepository;
 
     // Method to create a new user based on the UserRequest DTO
-    public UserResponse registerUser(UserRequest request) {
-        // cek apakah email sudah terdaftar
+   public UserResponse registerUser(UserRequest request) {
+        // 1. Cek Email duplikat (Logic lama)
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            // Kita pakai RuntimeException dulu, nanti bisa ganti custom exception
-            throw new RuntimeException("Email " + request.getEmail() + " sudah terdaftar");
+            throw new RuntimeException("Email " + request.getEmail() + " sudah terdaftar!");
         }
 
-        // 2. Konversi DTO ke Entity
-        // CATATAN: Di Sprint berikutnya (Security), kita akan mengenkripsi password ini!
-        // Untuk sekarang, kita simpan apa adanya dulu (plain text) agar alurnya jalan.
+        // 2. VALIDASI ROLE (LOGIC BARU ANDA) 🔥
+        // Jika request role-nya kosong, otomatis jadi CUSTOMER
+        // Jika user mencoba daftar jadi ADMIN, UBAH PAKSA jadi CUSTOMER (atau lempar error)
+        UserRole roleToSave;
+        try {
+            roleToSave = UserRole.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            // Jika user tidak isi role, atau isi ngawur, default ke CUSTOMER
+            roleToSave = UserRole.CUSTOMER;
+        }
+
+        // PERATURAN KERAS: Dilarang daftar jadi ADMIN lewat API ini!
+        if (roleToSave == UserRole.ADMIN) {
+            throw new RuntimeException("Anda tidak boleh mendaftar sebagai Admin!");
+        }
+
+        // 3. Simpan User
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(request.getPassword()) // nanti di Sprint Security, ini akan dienkripsi
-                .role(request.getRole() == null ? "Customer" : request.getRole()) // default role adalah "Customer"
+                .password(request.getPassword())
+                .role(roleToSave) // Gunakan role yang sudah divalidasi
                 .build();
-        
-        // 3. Simpan ke database
+
         User savedUser = userRepository.save(user);
 
-        // 4. Kembalikan dalam bentuk Response
-        return UserResponse.builder()
-                .id(savedUser.getId())
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .role(savedUser.getRole())
-                .createdAt(savedUser.getCreatedAt())
-                .build();
+        return mapToResponse(savedUser); // Sesuaikan return mapping Anda
     }
 }

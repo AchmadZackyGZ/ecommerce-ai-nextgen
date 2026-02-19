@@ -7,5 +7,5 @@ public class UserRequest {
     private String name;
     private String email;
     private String password;
-    private String role; // e.g., "Customer", "ADMIN"
+    private String role; // Biarkan String di DTO agar User mengetik teks, nanti kita konversi di Service
 }

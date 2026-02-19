@@ -29,7 +29,8 @@ public class User {
     private String password;
 
     @Column(nullable = false)
-    private String role; // Nanti isinya bisa "ADMIN" atau "CUSTOMER"
+    @Enumerated(EnumType.STRING) // Menyimpan enum sebagai String di database
+    private UserRole role; // Ganti dari String ke UserRole (enum) that create UserRole.java
 
     @CreationTimestamp
     @Column(updatable = false)
