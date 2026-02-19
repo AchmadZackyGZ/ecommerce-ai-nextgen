@@ -7,6 +7,7 @@ import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.models.UserRole;
 import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service // Spring annotation to indicate that this class is a service component
@@ -14,6 +15,9 @@ public class UserService {
     
     @Autowired // Spring annotation to automatically inject the UserRepository dependency
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder; // Injecting the PasswordEncoder to hash passwords before saving to the database
 
     // Method to create a new user based on the UserRequest DTO
   public UserResponse registerUser(UserRequest request) {
@@ -40,7 +44,7 @@ public class UserService {
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(request.getPassword()) // Ingat: Nanti di Sprint 7 ini akan kita enkripsi!
+                .password(passwordEncoder.encode(request.getPassword())) // Enkripsi password sebelum disimpan
                 .role(roleToSave) 
                 .build();
 

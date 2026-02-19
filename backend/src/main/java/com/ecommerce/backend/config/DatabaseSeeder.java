@@ -6,12 +6,16 @@ import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder; // Injecting the PasswordEncoder to hash passwords before saving to the database
 
     @Override
     public void run(String... args) throws Exception {
@@ -20,9 +24,9 @@ public class DatabaseSeeder implements CommandLineRunner {
             
             // Kalau belum ada, buat Admin baru sekarang!
             User admin = User.builder()
-                    .name("Super Admin")
+                    .name("Super_Admin")
                     .email("admin@ecommerce.com")
-                    .password("admin123") // Nanti di Sprint 7 kita enkripsi ini!
+                    .password(passwordEncoder.encode("admin123")) // Enkripsi password default "admin123"
                     .role(UserRole.ADMIN) // Role sakti
                     .build();
 
