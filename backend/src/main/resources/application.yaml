@@ -24,6 +24,13 @@ spring:
       host: localhost
       port: 6379
 
+  security:
+  jwt:
+    # Ini adalah kata sandi "ecommerce-ai-nextgen-super-secret-key-for-jwt-2026" yang diubah ke format Base64
+    secret-key: ZWNvbW1lcmNlLWFpLW5leHRnZW4tc3VwZXItc2VjcmV0LWtleS1mb3Itand0LTIwMjY=
+    # Waktu kadaluarsa tiket (86400000 milidetik = 1 Hari)
+    expiration-time: 86400000
+
 # Mengatur port Backend kita agar jalan di port 8080 (atau 8081 jika 8080 dipakai Traefik)
 # Karena Traefik pakai 8080 untuk dashboard, kita set Spring Boot di 8081
 server:
