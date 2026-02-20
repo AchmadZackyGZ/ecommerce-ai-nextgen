@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder // Memudahkan kita membuat object User nanti
 @Entity // Menandakan bahwa class ini adalah tabel Database
 @Table(name = "users") // PENTING: Kita pakai "users", bukan "user", karena "user" adalah kata terlarang (reserved keyword) di PostgreSQL!
-public class User {
+public class User implements org.springframework.security.core.userdetails.UserDetails { // Implementasi UserDetails untuk integrasi dengan Spring Security
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,4 +38,39 @@ public class User {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    // --- METHOD WAJIB DARI USERDETAILS SPRING SECURITY ---
+
+    // Mengubah Role kita menjadi format yang dipahami Spring Security (misal: "ROLE_ADMIN")
+    @Override
+    public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
+        return java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    // Kita menggunakan Email sebagai Username untuk Login
+    @Override
+    public String getUsername() {
+        return email; 
+    }
+
+    // Sisanya kita set "true" semua yang menandakan akun ini aktif dan tidak diblokir
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

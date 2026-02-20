@@ -21,7 +21,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // Cek apakah Admin sudah ada? (Berdasarkan email)
         if (userRepository.findByEmail("admin@ecommerce.com").isEmpty()) {
-            
+
             // Kalau belum ada, buat Admin baru sekarang!
             User admin = User.builder()
                     .name("Super_Admin")
