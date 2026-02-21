@@ -20,6 +20,11 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 🔥 RELASI 2: Banyak Produk (Product) dimiliki oleh Satu Toko (Shop)
+    @ManyToOne
+    @JoinColumn(name = "shop_id", nullable = false)
+    private Shop shop;
+
     @Column(nullable = false)
     private String name;
 
