@@ -7,6 +7,7 @@ import com.ecommerce.backend.services.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,8 @@ public class ProductController {
     private ProductService productService;
 
     // 1. Endpoint POST (Membuat produk baru)
+    // 🔥 HANYA SELLER DAN ADMIN YANG BOLEH MENAMBAH PRODUK
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@RequestBody ProductRequest productRequest) {
         // Proses datanya di Service
@@ -64,6 +67,8 @@ public class ProductController {
     }
 
     // 4. Endpoint PUT (Mengupdate produk berdasarkan ID)
+    // 🔥 HANYA SELLER DAN ADMIN YANG BOLEH UPDATE
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(@PathVariable Long id,@RequestBody ProductRequest productRequest) {
         ProductResponse updateData = productService.updateProduct(id, productRequest);
@@ -78,6 +83,9 @@ public class ProductController {
     }
 
     // 5. Endpoint DELETE (Menghapus produk berdasarkan ID)
+    // 🔥 HANYA ADMIN YANG BOLEH HAPUS PRODUK (Contoh ketat)
+    // Atau jika Seller juga boleh hapus: @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SELLER')") // Contoh: Seller juga boleh hapus produk mereka sendiri
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Object>> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
