@@ -4,6 +4,7 @@ import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -12,11 +13,13 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -26,18 +29,30 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
+    // 🔥 TAMBAHKAN 3 BARIS INI UNTUK MEMANGGIL SATPAMNYA
+    @Autowired
+    @org.springframework.context.annotation.Lazy // Mencegah error "Circular Dependency"
+    private JwtAuthenticationFilter jwtAuthFilter;
+
     // 1. Aturan Pintu Gerbang Utama
-    @Bean
+   @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/users/register").permitAll() 
-                .requestMatchers("/api/auth/login").permitAll()  // 🔥 BUKA PINTU UNTUK LOGIN!
-                .requestMatchers("/api/products/**").permitAll()    
+                .requestMatchers("/api/auth/login").permitAll()
+                
+                // 🔥 1. PERBAIKAN: HANYA GET YANG GRATIS!
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()    
+                
                 .anyRequest().authenticated()
             )
-            .authenticationProvider(authenticationProvider()); // Daftarkan mesin pemeriksa password
+            // 🔥 2. PERBAIKAN: MATIKAN SESSION (WAJIB UNTUK JWT)
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authenticationProvider())
+            // 🔥 3. PERBAIKAN: PASANG SATPAM JWT KITA DI DEPAN PINTU!
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
             
         return http.build();
     }

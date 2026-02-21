@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice // Inilah anotasi ajaib yang menjadikannya "Global Handler"
 public class GlobalExceptionHandler {
@@ -19,6 +20,18 @@ public class GlobalExceptionHandler {
                 .build();
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    // Menangkap error jika User mencoba mengakses fitur yang bukan Hak-nya (403 Forbidden)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(AccessDeniedException ex) {
+        ApiResponse<Object> response = ApiResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .message("Akses Ditolak: Kasta Anda tidak cukup untuk melakukan tindakan ini!") 
+                .data(null)
+                .build();
+        
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
     // 2. Menangkap semua error lain yang tidak terduga (500)
