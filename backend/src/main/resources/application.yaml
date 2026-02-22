@@ -12,7 +12,7 @@ spring:
   # 2. Konfigurasi JPA / Hibernate (Pengatur Tabel Otomatis)
   jpa:
     hibernate:
-      ddl-auto: update # Ajaib! Spring Boot akan otomatis membuat/update tabel di DB nanti
+      ddl-auto: update # Ajaib! Spring akan otomatis membuat/update tabel di DB nanti
     show-sql: true # Agar kita bisa melihat query SQL yang berjalan di terminal (bagus untuk debug)
     properties:
       hibernate:
