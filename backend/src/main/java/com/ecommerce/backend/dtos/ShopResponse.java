@@ -12,5 +12,6 @@ public class ShopResponse {
     private String name;
     private String description;
     private String ownerName; // Nama pemilik toko
+    private String status; // Status toko (PENDING, APPROVED, REJECTED)
     private LocalDateTime createdAt;
 }

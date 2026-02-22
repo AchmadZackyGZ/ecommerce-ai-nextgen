@@ -21,6 +21,11 @@ public class Shop {
 
     private String description;
 
+    // ENUM : Status Toko
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ShopStatus status;
+
     // 🔥 RELASI 1: Satu Toko (Shop) dimiliki oleh Satu Penjual (User)
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
