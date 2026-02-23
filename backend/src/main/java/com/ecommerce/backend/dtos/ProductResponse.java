@@ -14,5 +14,8 @@ public class ProductResponse {
     private BigDecimal price;
     private Integer stock;
     private String imageUrl;
+    // 🔥 TAMBAHKAN INI UNTUK INFO TOKO
+    private Long shopId;
+    private String shopName;
     private LocalDateTime createdAt;
 }
