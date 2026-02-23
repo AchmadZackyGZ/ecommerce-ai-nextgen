@@ -69,6 +69,11 @@ public class ShopService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Toko dengan ID tersebut tidak ditemukan!"));
         
+        // 🔥 VALIDASI BARU: Cek apakah status toko sudah sama dengan yang di-request
+        if (shop.getStatus() == newStatus) {
+            throw new BadRequestException("Gagal: Toko ini sudah berstatus " + newStatus.name() + " sebelumnya!");
+        }
+
         shop.setStatus(newStatus);
         Shop savedShop = shopRepository.save(shop);
         
