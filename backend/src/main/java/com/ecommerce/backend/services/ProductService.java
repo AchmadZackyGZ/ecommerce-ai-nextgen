@@ -3,9 +3,17 @@ package com.ecommerce.backend.services;
 import com.ecommerce.backend.dtos.ProductRequest;
 import com.ecommerce.backend.dtos.ProductResponse;
 import com.ecommerce.backend.models.Product;
+import com.ecommerce.backend.models.Shop;
+import com.ecommerce.backend.models.ShopStatus;
+import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.ProductRepository;
+import com.ecommerce.backend.repositories.ShopRepository;
+import com.ecommerce.backend.repositories.UserRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 
 import java.util.List;
@@ -16,19 +24,40 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private ShopRepository shopRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     // membuat product baru (CREATE Product)
-    public ProductResponse createProduct(ProductRequest request) {
-        // Ubah DTO (Piring) menjadi Entity (Bahan Mentah)
-        Product newProduct = Product.builder()
+    public ProductResponse createProduct(ProductRequest request, String sellerEmail) {
+
+        // cari data seller ke database
+        User seller = userRepository.findByEmail(sellerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!")); // ResourceNotFoundException
+
+        // cari data toko ke database
+        Shop shop = shopRepository.findByOwner(seller)
+                .orElseThrow(() -> new BadRequestException("Anda belum memiliki toko! Silakan buka toko terlebih dahulu."));
+
+        // 3. ATURAN BISNIS: Cek apakah Toko sudah disetujui Admin
+        if (shop.getStatus() != ShopStatus.APPROVED) {
+            throw new BadRequestException("Akses Ditolak: Toko Anda masih berstatus " + shop.getStatus() + ". Tunggu persetujuan Admin untuk mulai berjualan.");
+        }
+
+        // 4. Bangun Produk dan TEMPELKAN ke Toko tersebut
+        Product product = Product.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .stock(request.getStock())
                 .imageUrl(request.getImageUrl())
+                .shop(shop) // 🔥 INI KUNCI UTAMANYA! Produk resmi masuk ke Toko.
                 .build();
 
         // Simpan ke database
-        Product savedProduct = productRepository.save(newProduct);
+        Product savedProduct = productRepository.save(product); 
 
         // Kembalikan dalam bentuk Response (Piring Saji)
         return mapToResponse(savedProduct);

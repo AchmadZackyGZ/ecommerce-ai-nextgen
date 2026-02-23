@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -20,17 +21,20 @@ public class ProductController {
     private ProductService productService;
 
     // 1. Endpoint POST (Membuat produk baru)
-    // 🔥 HANYA SELLER DAN ADMIN YANG BOLEH MENAMBAH PRODUK
-    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    // 🔥 HANYA SELLER YANG BOLEH MENAMBAH PRODUK ke Toko nya
+    @PreAuthorize("hasRole('SELLER')")
     @PostMapping
-    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@RequestBody ProductRequest productRequest) {
+    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@RequestBody ProductRequest productRequest, Principal principal) {
+        // Ambil email dari token JWT
+        String email = principal.getName();
+        
         // Proses datanya di Service
-        ProductResponse savedData = productService.createProduct(productRequest);
+        ProductResponse savedData = productService.createProduct(productRequest, email);
         
         // Bungkus dengan ApiResponse
         ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
                 .status(HttpStatus.CREATED.value()) // Angka 201
-                .message("Berhasil menambahkan data produk baru")
+                .message("Berhasil menambahkan Produk ke Toko Anda")
                 .data(savedData)
                 .build();
 
