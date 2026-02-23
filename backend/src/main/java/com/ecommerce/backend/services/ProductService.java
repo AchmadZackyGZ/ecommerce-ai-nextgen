@@ -116,6 +116,9 @@ public class ProductService {
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .imageUrl(product.getImageUrl())
+                //  Ekstrak data dari Toko (Shop)
+                .shopId(product.getShop().getId())
+                .shopName(product.getShop().getName())
                 .createdAt(product.getCreatedAt())
                 .build();
     }
