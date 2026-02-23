@@ -45,27 +45,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 3. Ambil isi tokennya saja (buang tulisan "Bearer ")
         jwt = authHeader.substring(7);
+        
+        try {
+            // 4. Minta Pabrik (JwtService) untuk mengekstrak email dari token
+            userEmail = jwtService.extractUsername(jwt);
 
-        // 4. Minta Pabrik (JwtService) untuk mengekstrak email dari token
-        userEmail = jwtService.extractUsername(jwt);
-
-        // 5. Cek kecocokan dan validasi
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // 5. Cek kecocokan dan validasi
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+                if (jwtService.isTokenValid(jwt, userDetails)) {
                 // 6. Jika Valid! Beri cap "Telah Lolos Keamanan" dan izinkan masuk
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
-        }
+            // 7. Silakan masuk ke Controller yang dituju!
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            // 🔥 JIKA TOKEN PALSU / KADALUARSA, SATPAM MEMBALAS DENGAN JSON RAPI (401 UNAUTHORIZED)
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\": 401, \"message\": \"Akses Ditolak: Token JWT tidak valid, rusak, atau sudah kadaluarsa!\", \"data\": null}");
+        } 
         
-        // 7. Silakan masuk ke Controller yang dituju!
-        filterChain.doFilter(request, response);
     }
 }
