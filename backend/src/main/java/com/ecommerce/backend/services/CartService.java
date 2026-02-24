@@ -155,4 +155,27 @@ public class CartService {
         // Kembalikan isi keranjang terbaru yang sudah dihitung ulang total harganya
         return getCart(userEmail);
     }
+
+    // --- 4. FITUR MENGHAPUS BARANG DARI KERANJANG ---
+    public CartResponse deleteCartItem(Long cartItemId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new ResourceNotFoundException("Keranjang tidak ditemukan!"));
+
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Barang di keranjang tidak ditemukan!"));
+
+        // 🔥 VALIDASI KEAMANAN: Cegah hacker menghapus barang dari keranjang orang lain
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new BadRequestException("Akses Ditolak: Anda tidak bisa menghapus barang dari keranjang orang lain!");
+        }
+
+        // Eksekusi Hapus!
+        cartItemRepository.delete(cartItem);
+
+        // Kembalikan isi keranjang terbaru
+        return getCart(userEmail);
+    }
 }
