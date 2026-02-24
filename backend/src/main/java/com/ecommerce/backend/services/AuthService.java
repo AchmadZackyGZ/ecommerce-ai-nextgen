@@ -17,16 +17,17 @@ public class AuthService {
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserRepository userRepository;  
 
     @Autowired
     private JwtService jwtService;
+
 
     public AuthResponse login(AuthRequest request) {
         try {
             // 1. Suruh Satpam mengecek kecocokan email dan password
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
         } catch (Exception e) {
             // Jika salah password / email tidak ada
@@ -35,7 +36,7 @@ public class AuthService {
 
         // 2. Jika lolos, ambil data user
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("User tidak ditemukan"));
+            .orElseThrow(() -> new BadRequestException("User tidak ditemukan"));
 
         // 3. Cetak tiket JWT
         String jwtToken = jwtService.generateToken(user);

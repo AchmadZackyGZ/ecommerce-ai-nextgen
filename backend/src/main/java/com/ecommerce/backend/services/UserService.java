@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.ecommerce.backend.models.Cart;
+import com.ecommerce.backend.repositories.CartRepository;
+
 @Service // Spring annotation to indicate that this class is a service component
 public class UserService {
     
@@ -18,6 +21,9 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder; // Injecting the PasswordEncoder to hash passwords before saving to the database
+
+    @Autowired
+    private CartRepository cartRepository; // Injecting CartRepository to create a cart for the user upon registration
 
     // Method to create a new user based on the UserRequest DTO
   public UserResponse registerUser(UserRequest request) {
@@ -49,6 +55,12 @@ public class UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // Buatkan keranjang kosong untuk user baru
+        Cart cart = Cart.builder()
+                .user(savedUser) // Tempelkan keranjang ini ke user yang baru saja dibuat
+                .build();
+        cartRepository.save(cart); // simpan keranjang ke database
 
         // 4. Kembalikan balasan yang rapi
         return mapToResponse(savedUser); 
