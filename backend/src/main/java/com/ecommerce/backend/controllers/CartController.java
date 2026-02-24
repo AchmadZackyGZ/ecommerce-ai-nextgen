@@ -53,4 +53,41 @@ public class CartController {
 
         return ResponseEntity.ok(response);
     }
+
+    // 3. API untuk mengubah jumlah barang (Update Quantity)
+    @PutMapping("/{cartItemId}")
+    public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
+            @PathVariable Long cartItemId,
+            @RequestParam Integer quantity, // 💡 Kita pakai Query Param agar simpel: ?quantity=5
+            Principal principal // Mengambil email user yang sedang login
+    ) {
+        String email = principal.getName();
+        CartResponse cartResponse = cartService.updateCartItem(cartItemId, quantity, email);
+
+        ApiResponse<CartResponse> response = ApiResponse.<CartResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Jumlah barang berhasil diperbarui.")
+                .data(cartResponse)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 4. API untuk menghapus barang dari keranjang (Delete Item)
+    @DeleteMapping("/{cartItemId}")
+    public ResponseEntity<ApiResponse<CartResponse>> deleteCartItem(
+            @PathVariable Long cartItemId,
+            Principal principal // Mengambil email user yang sedang login
+    ) {
+        String email = principal.getName();
+        CartResponse cartResponse = cartService.deleteCartItem(cartItemId, email);
+
+        ApiResponse<CartResponse> response = ApiResponse.<CartResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Barang berhasil dihapus dari keranjang.")
+                .data(cartResponse)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
 }
