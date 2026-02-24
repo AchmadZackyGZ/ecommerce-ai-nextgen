@@ -122,4 +122,37 @@ public class CartService {
                 .totalPrice(totalPrice)
                 .build();
     }
+
+    // --- 3. FITUR MENGUBAH JUMLAH BARANG DI KERANJANG ---
+    public CartResponse updateCartItem(Long cartItemId, Integer newQuantity, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new ResourceNotFoundException("Keranjang tidak ditemukan!"));
+
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Barang di keranjang tidak ditemukan!"));
+
+        // 🔥 VALIDASI KEAMANAN: Pastikan barang ini benar-benar ada di keranjang milik user yang sedang login!
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new BadRequestException("Akses Ditolak: Anda tidak bisa mengubah keranjang milik orang lain!");
+        }
+
+        // Jika kuantitas diubah menjadi 0 atau kurang, sekalian saja hapus barangnya
+        if (newQuantity <= 0) {
+            cartItemRepository.delete(cartItem);
+        } else {
+            // Cek apakah stok toko masih cukup untuk jumlah yang baru
+            if (cartItem.getProduct().getStock() < newQuantity) {
+                throw new BadRequestException("Stok tidak mencukupi! Sisa stok: " + cartItem.getProduct().getStock());
+            }
+            // Update dan simpan
+            cartItem.setQuantity(newQuantity);
+            cartItemRepository.save(cartItem);
+        }
+
+        // Kembalikan isi keranjang terbaru yang sudah dihitung ulang total harganya
+        return getCart(userEmail);
+    }
 }
