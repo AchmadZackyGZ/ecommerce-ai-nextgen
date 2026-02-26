@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 public class VoucherResponse {
     private Long id;
     private String code;
-    private BigDecimal discountAmount;
+    private Integer discountPercentage;   // 🔥 Diubah
+    private BigDecimal maxDiscountAmount; // 🔥 Ditambah
     private Integer quota;
     private LocalDateTime expiredAt;
     private String shopName; // Kita tampilkan nama toko pembuatnya
