@@ -22,10 +22,13 @@ public class Voucher {
     @Column(nullable = false, unique = true)
     private String code;
 
-    // 🔥 Berapa nominal diskonnya? (misal: potongan Rp 50.000)
-    // Kita pakai BigDecimal agar setara dengan harga Product
+    // 🔥 PERUBAHAN 1: Berapa persen diskonnya? (Misal: 20 untuk 20%)
     @Column(nullable = false)
-    private BigDecimal discountAmount;
+    private Integer discountPercentage;
+
+    // 🔥 PERUBAHAN 2: Batas maksimal kerugian Seller (Misal: maksimal potong Rp 10.000)
+    @Column(nullable = false)
+    private BigDecimal maxDiscountAmount;
 
     // 🔥 Sisa kuota voucher (misal: 50x pakai)
     @Column(nullable = false)

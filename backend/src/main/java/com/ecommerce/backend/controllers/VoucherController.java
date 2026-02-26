@@ -32,7 +32,7 @@ public class VoucherController {
 
         ApiResponse<VoucherResponse> response = ApiResponse.<VoucherResponse>builder()
                 .status(HttpStatus.CREATED.value())
-                .message("Mantap! Voucher diskon berhasil diterbitkan.")
+                .message("Voucher diskon berhasil diterbitkan.")
                 .data(responseData)
                 .build();
 
