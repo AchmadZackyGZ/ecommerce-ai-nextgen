@@ -137,6 +137,21 @@ public class OrderService {
         return mapToOrderResponse(savedOrder, orderItems);
     }
 
+    // --- 2. FITUR MELIHAT RIWAYAT PESANAN (ORDER HISTORY) ---
+    public List<OrderResponse> getUserOrderHistory(String userEmail) {
+        // 1. Cari user yang sedang login
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+
+        // 2. Ambil semua struk pesanan milik user ini dari database
+        List<Order> orders = orderRepository.findByUser(user);
+
+        // 3. Ubah Entitas Order menjadi DTO OrderResponse menggunakan fungsi helper kita
+        return orders.stream()
+                .map(order -> mapToOrderResponse(order, order.getOrderItems()))
+                .collect(Collectors.toList());
+    }
+
     // Fungsi Helper untuk merapikan JSON Balasan
     private OrderResponse mapToOrderResponse(Order order, List<OrderItem> items) {
         List<OrderItemResponse> itemResponses = items.stream().map(item ->

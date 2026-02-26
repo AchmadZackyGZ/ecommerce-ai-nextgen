@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -38,5 +39,20 @@ public class OrderController {
 
         // Kita gunakan 201 CREATED karena kita mencetak "Struk/Order" baru di database
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // API KEDUA: Melihat Riwayat Belanja User
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrderHistory(Principal principal) {
+        
+        List<OrderResponse> orderHistory = orderService.getUserOrderHistory(principal.getName());
+
+        ApiResponse<List<OrderResponse>> response = ApiResponse.<List<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil memuat riwayat pesanan Anda.")
+                .data(orderHistory)
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 }
