@@ -13,6 +13,7 @@ import com.ecommerce.backend.repositories.VoucherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,15 +43,24 @@ public class VoucherService {
             throw new BadRequestException("Kode voucher '" + voucherCode + "' sudah pernah dibuat! Silakan gunakan kombinasi kode lain.");
         }
 
-        // Validasi: Jangan sampai salah ketik minus
-        if (request.getQuota() <= 0 || request.getDiscountAmount().signum() <= 0) {
-            throw new BadRequestException("Kuota dan Nominal Diskon harus lebih besar dari 0!");
+        // 🔥 VALIDASI BARU: SHOPEE STYLE!
+        if (request.getDiscountPercentage() == null || request.getDiscountPercentage() <= 0 || request.getDiscountPercentage() > 100) {
+            throw new BadRequestException("Gagal: Persentase diskon harus di antara 1 hingga 100!");
+        }
+
+        if (request.getMaxDiscountAmount() == null || request.getMaxDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Gagal: Maksimal potongan harga (maxDiscountAmount) harus lebih besar dari 0!");
+        }
+
+        if (request.getQuota() <= 0) {
+            throw new BadRequestException("Gagal: Kuota voucher harus lebih besar dari 0!");
         }
 
         // Voucher.builder() adalah fitur dari Lombok @Builder yang memudahkan kita membuat objek Voucher tanpa harus menulis constructor panjang lebar. Kita tinggal isi field yang mau diisi, dan builder akan mengurus sisanya.
         Voucher voucher = Voucher.builder()
                 .code(voucherCode)
-                .discountAmount(request.getDiscountAmount())
+                .discountPercentage(request.getDiscountPercentage())   // 🔥 Simpan Persen
+                .maxDiscountAmount(request.getMaxDiscountAmount())     // 🔥 Simpan Max Potongan
                 .quota(request.getQuota())
                 .expiredAt(request.getExpiredAt())
                 .shop(shop)
@@ -79,7 +89,8 @@ public class VoucherService {
         return VoucherResponse.builder()
                 .id(voucher.getId())
                 .code(voucher.getCode())
-                .discountAmount(voucher.getDiscountAmount())
+                .discountPercentage(voucher.getDiscountPercentage())
+                .maxDiscountAmount(voucher.getMaxDiscountAmount())
                 .quota(voucher.getQuota())
                 .expiredAt(voucher.getExpiredAt())
                 .shopName(voucher.getShop().getName())
