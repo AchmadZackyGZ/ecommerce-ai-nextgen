@@ -27,6 +27,7 @@ public class OrderService {
     @Autowired private ProductRepository productRepository;
     @Autowired private VoucherRepository voucherRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private ShopRepository shopRepository;
 
     // 🔥 @Transactional WAJIB ADA! 
     // Artinya: Jika di tengah jalan gagal (misal stok habis), semua perubahan ditarik mundur (Rollback)!
@@ -150,6 +151,54 @@ public class OrderService {
         return orders.stream()
                 .map(order -> mapToOrderResponse(order, order.getOrderItems()))
                 .collect(Collectors.toList());
+    }
+
+    // --- 3. FITUR SELLER: MELIHAT DAFTAR PESANAN MASUK ---
+    public List<OrderResponse> getShopOrders(String sellerEmail) {
+        User seller = userRepository.findByEmail(sellerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+        
+        Shop shop = shopRepository.findByOwner(seller)
+                .orElseThrow(() -> new BadRequestException("Anda belum memiliki toko!"));
+
+        // Ambil semua order yang masuk ke toko ini
+        List<Order> shopOrders = orderRepository.findOrdersByShop(shop);
+
+        return shopOrders.stream()
+                .map(order -> mapToOrderResponse(order, order.getOrderItems()))
+                .collect(Collectors.toList());
+    }
+
+    // --- 4. FITUR SELLER: MEMPROSES PENGIRIMAN BARANG (SHIPPED) ---
+    @Transactional
+    public OrderResponse shipOrder(Long orderId, String sellerEmail) {
+        User seller = userRepository.findByEmail(sellerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+        
+        Shop shop = shopRepository.findByOwner(seller)
+                .orElseThrow(() -> new BadRequestException("Anda belum memiliki toko!"));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
+
+        // 🔥 VALIDASI KEAMANAN: Pastikan pesanan ini benar-benar memuat barang dari toko si Seller!
+        boolean isOwner = order.getOrderItems().stream()
+                .anyMatch(item -> item.getProduct().getShop().getId().equals(shop.getId()));
+
+        if (!isOwner) {
+            throw new BadRequestException("Akses Ditolak: Anda tidak bisa memproses pesanan toko lain!");
+        }
+
+        // 🔥 VALIDASI LOGIKA: Hanya pesanan yang sudah dibayar (PAID) yang boleh dikirim!
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new BadRequestException("Gagal dikirim! Pesanan ini berstatus " + order.getStatus().name() + ". Harus dibayar (PAID) terlebih dahulu.");
+        }
+
+        // EKSEKUSI PENGIRIMAN!
+        order.setStatus(OrderStatus.SHIPPED);
+        Order savedOrder = orderRepository.save(order);
+
+        return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());
     }
 
     // Fungsi Helper untuk merapikan JSON Balasan
