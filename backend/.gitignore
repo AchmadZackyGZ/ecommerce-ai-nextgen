@@ -14,10 +14,13 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
+
+# === LOGS ===
+*.log
 
 ### NetBeans ###
 /nbproject/private/
@@ -31,3 +34,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+# === 🔥 RAHASIA NEGARA (JANGAN PERNAH DI-PUSH) 🔥 ===
+application.yml
+application.yaml
+application.properties
+.env
