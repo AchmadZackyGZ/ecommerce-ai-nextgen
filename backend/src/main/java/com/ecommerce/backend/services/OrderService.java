@@ -191,11 +191,39 @@ public class OrderService {
 
         // 🔥 VALIDASI LOGIKA: Hanya pesanan yang sudah dibayar (PAID) yang boleh dikirim!
         if (order.getStatus() != OrderStatus.PAID) {
-            throw new BadRequestException("Gagal dikirim! Pesanan ini berstatus " + order.getStatus().name() + ". Harus dibayar (PAID) terlebih dahulu.");
+            throw new BadRequestException("Gagal dikirim! Pesanan ini berstatus " + order.getStatus().name() + ". Hanya pesanan PAID yang bisa diselesaikan.");
         }
 
         // EKSEKUSI PENGIRIMAN!
         order.setStatus(OrderStatus.SHIPPED);
+        Order savedOrder = orderRepository.save(order);
+
+        return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());
+    }
+
+    // --- 5. FITUR CUSTOMER: KONFIRMASI PESANAN DITERIMA (COMPLETED) ---
+    @Transactional
+    public OrderResponse completeOrder(Long orderId, String userEmail) {
+        // 1. Cari user yang sedang login (Customer)
+        User customer = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+
+        // 2. Cari Struk Pesanannya
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
+
+        // 3. 🔥 VALIDASI KEAMANAN: Pastikan pesanan ini benar-benar milik Customer tersebut!
+        if (!order.getUser().getId().equals(customer.getId())) {
+            throw new BadRequestException("Akses Ditolak: Anda tidak bisa menyelesaikan pesanan milik orang lain!");
+        }
+
+        // 4. 🔥 VALIDASI LOGIKA: Hanya pesanan yang sedang dikirim (SHIPPED) yang bisa diselesaikan!
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new BadRequestException("Gagal! Pesanan ini berstatus " + order.getStatus().name() + ". Hanya pesanan SHIPPED yang bisa diselesaikan.");
+        }
+
+        // 5. EKSEKUSI PENYELESAIAN!
+        order.setStatus(OrderStatus.COMPLETED);
         Order savedOrder = orderRepository.save(order);
 
         return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());

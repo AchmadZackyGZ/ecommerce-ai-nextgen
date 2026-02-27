@@ -55,4 +55,21 @@ public class OrderController {
 
         return ResponseEntity.ok(response);
     }
+
+    // 3. API KETIGA: Konfirmasi Pesanan Diterima (Menjadi COMPLETED)
+    @PutMapping("/{orderId}/complete")
+    public ResponseEntity<ApiResponse<OrderResponse>> completeOrder(
+            @PathVariable Long orderId,
+            Principal principal
+    ) {
+        OrderResponse completedOrder = orderService.completeOrder(orderId, principal.getName());
+
+        ApiResponse<OrderResponse> response = ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Yey! Pesanan telah selesai dan diterima oleh Anda. Terima kasih telah berbelanja!")
+                .data(completedOrder)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
 }
