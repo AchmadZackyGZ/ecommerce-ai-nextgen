@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(AccessDeniedException ex) {
         ApiResponse<Object> response = ApiResponse.builder()
                 .status(HttpStatus.FORBIDDEN.value())
-                .message("Akses Ditolak: Kasta Anda tidak cukup untuk melakukan tindakan ini!") 
+                .message("Akses Ditolak: role Anda tidak memiliki izin untuk melakukan tindakan ini!") 
                 .data(null)
                 .build();
         

@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.ecommerce.backend.dtos.SnapResponse;
 
 import java.security.Principal;
 
@@ -37,5 +38,22 @@ public class PaymentController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // API BARU: Generate Snap Token
+    @PostMapping("/snap-token/{orderId}")
+    public ResponseEntity<ApiResponse<SnapResponse>> getSnapToken(
+            @PathVariable Long orderId,
+            Principal principal // Mengambil email user yang sedang login
+    ) {
+        SnapResponse snapResponse = paymentService.createSnapToken(orderId, principal.getName());
+
+        ApiResponse<SnapResponse> response = ApiResponse.<SnapResponse>builder()
+                .status(HttpStatus.OK.value()) // repsonse status OK atau 200 karena ini hanya generate token, belum benar-benar melakukan pembayaran
+                .message("Berhasil mendapatkan Snap Token dari Midtrans!")
+                .data(snapResponse)
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 }

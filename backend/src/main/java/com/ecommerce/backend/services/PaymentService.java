@@ -12,6 +12,11 @@ import com.ecommerce.backend.repositories.PaymentRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.midtrans.httpclient.SnapApi;
+import com.midtrans.httpclient.error.MidtransError;
+import com.ecommerce.backend.dtos.SnapResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -76,5 +81,58 @@ public class PaymentService {
                 .paymentStatus(savedPayment.getPaymentStatus())
                 .message("Pembayaran Berhasil! Pesanan Anda segera diproses oleh Penjual.")
                 .build();
+    }
+
+    // --- FITUR BARU: MINTA TOKEN SNAP KE MIDTRANS ---
+    public SnapResponse createSnapToken(Long orderId, String userEmail) {
+        
+        // 1. Cari pesanannya dan validasi keamanan
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
+
+        if (!order.getUser().getEmail().equals(userEmail)) {
+            throw new BadRequestException("Akses Ditolak: Anda tidak bisa membayar pesanan orang lain!");
+        }
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new BadRequestException("Pesanan tidak bisa dibayar karena statusnya: " + order.getStatus().name() + "Pesanan Wajib PENDING untuk bisa dibayar!");
+        }
+
+        try {
+            // 2. Siapkan "Surat Pengantar" (Payload/Params) untuk dikirim ke Midtrans
+            Map<String, Object> params = new HashMap<>();
+
+            // A. Rincian Transaksi
+            Map<String, String> transactionDetails = new HashMap<>();
+            // 🔥 Trik Arsitek: Midtrans mewajibkan order_id HARUS UNIK setiap kali request. 
+            // Kita tambahkan System.currentTimeMillis() agar kalau User gagal bayar dan coba lagi, tidak ditolak Midtrans.
+            String uniqueOrderId = "ORD-" + order.getId() + "-" + System.currentTimeMillis();
+            transactionDetails.put("order_id", uniqueOrderId);
+            // Nilai total belanja (harus berupa String integer, Midtrans tidak suka desimal berlebih)
+            transactionDetails.put("gross_amount", String.valueOf(order.getGrandTotal().intValue())); 
+
+            // B. Rincian Customer
+            Map<String, String> customerDetails = new HashMap<>();
+            customerDetails.put("first_name", order.getUser().getName());
+            customerDetails.put("email", order.getUser().getEmail());
+
+            // Masukkan ke dalam amplop utama
+            params.put("transaction_details", transactionDetails);
+            params.put("customer_details", customerDetails);
+
+            // 3. 🔥 TEMBAK KE SERVER MIDTRANS! 🔥
+            String token = SnapApi.createTransactionToken(params);
+            String redirectUrl = SnapApi.createTransactionRedirectUrl(params);
+
+            // 4. Kembalikan balasan dari Midtrans
+            return SnapResponse.builder()
+                    .token(token)
+                    .redirectUrl(redirectUrl)
+                    .build();
+
+        } catch (MidtransError e) {
+            // Kalau server Midtrans sedang gangguan / key salah
+            throw new RuntimeException("Gagal menghubungi server Midtrans: " + e.getMessage());
+        }
     }
 }
