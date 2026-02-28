@@ -42,8 +42,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/users/register").permitAll() 
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/webhooks/**").permitAll() // Biarkan Midtrans mengirim notifikasi tanpa harus login
                 
-                // 🔥 1. PERBAIKAN: HANYA GET YANG GRATIS!
+                // 🔥 1. PERBAIKAN: HANYA GET yang public
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()    
                 
                 .anyRequest().authenticated()

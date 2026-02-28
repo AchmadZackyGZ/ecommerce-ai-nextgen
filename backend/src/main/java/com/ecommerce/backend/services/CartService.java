@@ -84,7 +84,9 @@ public class CartService {
                     .product(product)
                     .quantity(request.getQuantity())
                     .build();
-            cartItemRepository.save(newItem);
+            cartItemRepository.save(newItem); // Simpan ke DB
+
+            cart.getCartItems().add(newItem); // Tambahkan ke list di Cart
         }
 
         // 6. Kembalikan data keranjang yang sudah diupdate
