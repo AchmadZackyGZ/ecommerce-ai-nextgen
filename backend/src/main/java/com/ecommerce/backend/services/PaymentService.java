@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.midtrans.httpclient.SnapApi;
 import com.midtrans.httpclient.error.MidtransError;
 import com.ecommerce.backend.dtos.SnapResponse;
+import com.ecommerce.backend.dtos.MidtransNotificationRequest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -133,6 +134,55 @@ public class PaymentService {
         } catch (MidtransError e) {
             // Kalau server Midtrans sedang gangguan / key salah
             throw new RuntimeException("Gagal menghubungi server Midtrans: " + e.getMessage());
+        }
+    }
+
+    // --- FITUR BARU: MENANGKAP SINYAL WEBHOOK DARI MIDTRANS ---
+    @Transactional // Pastikan semua operasi database di dalam method ini berjalan atomik
+    public void processMidtransNotification(MidtransNotificationRequest notification) {
+        String transactionStatus = notification.getTransactionStatus();
+        String fraudStatus = notification.getFraudStatus();
+        String midtransOrderId = notification.getOrderId(); // Format: ORD-1-1772xxx
+
+        // 🔥 TRIK ARSITEK: Bedah string "ORD-1-12345" untuk mengambil angka "1" (ID asli di database kita)
+        String[] parts = midtransOrderId.split("-");
+        if (parts.length < 2) {
+            throw new RuntimeException("Format Order ID Midtrans tidak dikenali: " + midtransOrderId);
+        }
+        Long realOrderId = Long.parseLong(parts[1]);
+
+        // Cari pesanannya di database
+        Order order = orderRepository.findById(realOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan dari Webhook!"));
+
+        // Logika Status Pembayaran Midtrans
+        if (transactionStatus.equals("settlement") || transactionStatus.equals("capture")) {
+            if (fraudStatus != null && fraudStatus.equals("challenge")) {
+                // Jangan diapa-apakan, nunggu review manual Midtrans
+            } else {
+                // 💥 UANG MASUK! UBAH STATUS ORDER JADI PAID 💥
+                if (order.getStatus() == OrderStatus.PENDING) {
+                    order.setStatus(OrderStatus.PAID);
+                    orderRepository.save(order);
+                    
+                    // Cetak Kwitansi Digital (Optional, agar history rapi)
+                    Payment payment = Payment.builder()
+                            .order(order)
+                            .transactionId(midtransOrderId)
+                            .paymentMethod(notification.getPaymentType())
+                            .amount(order.getGrandTotal())
+                            .paymentDate(LocalDateTime.now())
+                            .paymentStatus("SUCCESS")
+                            .build();
+                    paymentRepository.save(payment);
+                }
+            }
+        } else if (transactionStatus.equals("cancel") || transactionStatus.equals("deny") || transactionStatus.equals("expire")) {
+            // Jika pembayaran gagal / kadaluarsa
+            if (order.getStatus() == OrderStatus.PENDING) {
+                order.setStatus(OrderStatus.CANCELLED);
+                orderRepository.save(order);
+            }
         }
     }
 }
