@@ -12,6 +12,7 @@ import com.ecommerce.backend.repositories.UserRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
@@ -30,8 +31,11 @@ public class ProductService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     // membuat product baru (CREATE Product)
-    public ProductResponse createProduct(ProductRequest request, String sellerEmail) {
+    public ProductResponse createProduct(ProductRequest request, MultipartFile image ,String sellerEmail) {
 
         // cari data seller ke database
         User seller = userRepository.findByEmail(sellerEmail)
@@ -46,13 +50,20 @@ public class ProductService {
             throw new BadRequestException("Akses Ditolak: Toko Anda masih berstatus " + shop.getStatus() + ". Tunggu persetujuan Admin untuk mulai berjualan.");
         }
 
+        // 🚀 PROSES UPLOAD GAMBAR KE CLOUDINARY
+        String uploadedImageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            uploadedImageUrl = cloudinaryService.uploadImage(image);
+        }
+
         // 4. Bangun Produk dan TEMPELKAN ke Toko tersebut
         Product product = Product.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .stock(request.getStock())
-                .imageUrl(request.getImageUrl())
+                // 🔥 KUNCI UTAMA: Gunakan URL dari awan, bukan dari ketikan Seller!
+                .imageUrl(uploadedImageUrl)
                 .shop(shop) // 🔥 INI KUNCI UTAMANYA! Produk resmi masuk ke Toko.
                 .build();
 

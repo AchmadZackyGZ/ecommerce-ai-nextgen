@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -24,12 +25,19 @@ public class ProductController {
     // 🔥 HANYA SELLER YANG BOLEH MENAMBAH PRODUK ke Toko nya
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping
-    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@RequestBody ProductRequest productRequest, Principal principal) {
+    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
+            // 🔥 UBAH 1: Ganti @RequestBody menjadi @ModelAttribute agar bisa menerima Teks di dalam Form-Data
+            @ModelAttribute ProductRequest request,
+            // 🔥 UBAH 2: Tambahkan Penangkap File Foto
+            @RequestParam(value = "image", required = true) MultipartFile image,
+            Principal principal
+        ) {
+
         // Ambil email dari token JWT
         String email = principal.getName();
         
         // Proses datanya di Service
-        ProductResponse savedData = productService.createProduct(productRequest, email);
+        ProductResponse savedData = productService.createProduct(request, image, email);
         
         // Bungkus dengan ApiResponse
         ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
