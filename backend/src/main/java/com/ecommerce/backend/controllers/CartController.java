@@ -76,16 +76,22 @@ public class CartController {
     // 4. API untuk menghapus barang dari keranjang (Delete Item)
     @DeleteMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartResponse>> deleteCartItem(
-            @PathVariable Long cartItemId,
+            @PathVariable Long cartItemId, // ID barang di keranjang yang ingin dihapus
             Principal principal // Mengambil email user yang sedang login
     ) {
         String email = principal.getName();
-        CartResponse cartResponse = cartService.deleteCartItem(cartItemId, email);
+        
+        // Hapus barang dan TANGKAP nama barangnya dari Service
+        String deletedName = cartService.deleteCartItem(cartItemId, email);
+
+        // Ambil data keranjang terbaru (yang sudah kosong/berkurang itemnya)
+        CartResponse LastCartResponse = cartService.getCart(email);
 
         ApiResponse<CartResponse> response = ApiResponse.<CartResponse>builder()
                 .status(HttpStatus.OK.value())
-                .message("Barang berhasil dihapus dari keranjang.")
-                .data(cartResponse)
+                // Sekarang variabel deletedName sudah valid!
+                .message("Barang '" + deletedName + "' berhasil dihapus dari keranjang.")
+                .data(LastCartResponse)
                 .build();
 
         return ResponseEntity.ok(response);

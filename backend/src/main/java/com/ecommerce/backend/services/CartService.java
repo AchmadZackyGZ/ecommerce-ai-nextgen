@@ -159,7 +159,7 @@ public class CartService {
     }
 
     // --- 4. FITUR MENGHAPUS BARANG DARI KERANJANG ---
-    public CartResponse deleteCartItem(Long cartItemId, String userEmail) {
+    public String deleteCartItem(Long cartItemId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
 
@@ -174,10 +174,13 @@ public class CartService {
             throw new BadRequestException("Akses Ditolak: Anda tidak bisa menghapus barang dari keranjang orang lain!");
         }
 
+        // Simpan nama barang yang akan dihapus untuk dikembalikan sebagai pesan sukses
+        String deletedProductName = cartItem.getProduct().getName();
+
         // Eksekusi Hapus!
         cartItemRepository.delete(cartItem);
 
         // Kembalikan isi keranjang terbaru
-        return getCart(userEmail);
+        return deletedProductName;
     }
 }
