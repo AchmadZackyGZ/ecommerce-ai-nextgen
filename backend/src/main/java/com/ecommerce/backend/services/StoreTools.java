@@ -28,7 +28,7 @@ public class StoreTools {
 
         // Kita ubah data database menjadi teks sederhana agar mudah dibaca oleh AI
         return products.stream()
-                .map(p -> "- " + p.getName() + " (Harga: Rp " + p.getPrice() + ", Stok: " + p.getStock() + ")")
+                .map(p -> "- [ID: " + p.getId() + "] " + p.getName() + " (Harga: Rp " + p.getPrice() + ", Stok: " + p.getStock() + ")")
                 .collect(Collectors.joining("\n"));
     }
 }
