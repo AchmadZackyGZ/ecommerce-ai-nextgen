@@ -15,6 +15,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // Fitur untuk Frontend Next.js/Remix: Menampilkan daftar review di halaman detail produk
     List<Review> findByProduct(Product product);
 
+    // Fitur untuk Backend AI Nexia: Mengambil semua review untuk produk tertentu agar AI bisa menganalisisnya
+    List<Review> findByProductId(Long productId);
+
     // 🔥 FITUR BARU: Mengecek apakah user sudah pernah mereview produk ini (Anti-Spam)
     boolean existsByProductAndUser(Product product, User user);
 }
