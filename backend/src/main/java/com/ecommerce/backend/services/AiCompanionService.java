@@ -27,6 +27,9 @@ public class AiCompanionService {
     @Autowired
     private ReviewTools reviewTools; // AI untuk mengecek review produk
 
+    @Autowired
+    private FilterTools filterTools; // AI untuk memfilter produk berdasarkan budget customer
+
     private NexiaAgent agent;
 
     // 🧠 1. DEFINISI KEPRIBADIAN (INTERFACE AGENT) DENGAN PROMPT DEWA V3.0
@@ -41,8 +44,9 @@ public class AiCompanionService {
             "2. LACAK PESANAN: Jika customer ingin melacak pesanan, WAJIB panggil tool OrderTools.",
             "3. MASUKKAN KERANJANG: Jika customer menyuruhmu memasukkan barang ke keranjang, WAJIB panggil tool CartTools! Berikan nama barangnya dan jumlahnya sesuai persis dengan ucapan customer.\n",
             "4. CEK REVIEW: Jika customer bertanya tentang ulasan, rating, keluhan, atau pendapat orang lain tentang suatu produk, WAJIB panggil tool ReviewTools!\n",
+            "5. FILTER BUDGET: Jika customer mencari barang berdasarkan budget, uang yang dimiliki, atau batas harga tertentu, WAJIB panggil tool FilterTools!\n",
 
-            "🧠 PROTOKOL KECERDASAN (CARA MEMBALAS JIKA ORDER ID KOSONG):",
+            "🧠 PROTOKOL KECERDASAN:",
             "Jika customer belum memberikan Order ID, gunakan empati tinggi untuk memintanya. " +
             "- Jika meringkas review, JANGAN sebutkan datanya satu-satu secara kaku. Rangkum sentimen pembeli menjadi 1-2 kalimat sales yang meyakinkan!\n",
             "Contoh gaya bicara: 'Tentu, Nexia siap membantu melacak pesanan Anda! Boleh minta nomor Order ID-nya (berupa angka)? 📦✨'.\n",
@@ -68,7 +72,7 @@ public class AiCompanionService {
     public void init() {
         this.agent = AiServices.builder(NexiaAgent.class)
                 .chatLanguageModel(chatModel)
-                .tools(storeTools, orderTools, cartTools, reviewTools) // Memasangkan akses database
+                .tools(storeTools, orderTools, cartTools, reviewTools, filterTools) // Daftarkan semua tools yang sudah kita buat
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10)) // AI sekarang punya ingatan
                 .build();
     }
