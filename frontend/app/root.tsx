@@ -11,6 +11,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 
 import FloatingNav from "./components/shared/FloatingNav";
+import NexiaChat from "./components/ecommerce/NexiaChat";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -36,6 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-zinc-950 text-white antialiased">
         <FloatingNav />
+        <NexiaChat />
         {children}
         <ScrollRestoration />
         <Scripts />

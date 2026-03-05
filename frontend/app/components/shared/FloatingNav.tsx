@@ -1,4 +1,4 @@
-import { Link } from "react-router"; // Gunakan "react-router" untuk versi v7 (eks-Remix)
+import { Link } from "react-router";
 import {
   Home,
   PackageSearch,
@@ -6,37 +6,47 @@ import {
   ShoppingCart,
   User,
 } from "lucide-react";
+import { useAiStore } from "~/store/aiStore";
 
 export default function FloatingNav() {
+  const toggleAiChat = useAiStore((state) => state.toggleChat);
+
   return (
-    // 🔥 INI MAGIC TAILWIND-NYA: bottom-6 untuk HP, md:top-6 md:bottom-auto untuk PC!
-    <nav className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2 md:bottom-auto md:top-6 md:w-auto md:max-w-none">
-      <div className="flex items-center justify-between rounded-full border border-white/10 bg-zinc-900/80 px-6 py-3 shadow-2xl backdrop-blur-md md:gap-10">
+    <nav className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 md:bottom-auto md:top-6">
+      {/* 🔥 MAGIC KAPSUL UTAMA: 
+        1. bg-zinc-950/20 = Ekstra transparan saat diam (menyatu dengan background).
+        2. backdrop-blur-xl = Efek kaca buram ala macOS.
+        3. group = Kunci untuk mendeteksi hover dan memerintahkan elemen di dalamnya membesar!
+      */}
+      <div className="group flex items-center justify-center gap-2 rounded-full border border-white/10 bg-zinc-950/20 p-2 shadow-lg backdrop-blur-xl transition-all duration-500 ease-out hover:bg-zinc-900/70 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] md:hover:p-3">
         {/* Tombol Kiri */}
-        <NavItem to="/" icon={<Home size={22} />} label="Home" />
+        <NavItem to="/" icon={<Home size={20} />} label="Home" />
         <NavItem
           to="/katalog"
-          icon={<PackageSearch size={22} />}
+          icon={<PackageSearch size={20} />}
           label="Katalog"
         />
 
-        {/* 🤖 THE NEXIA COMMAND CENTER (Tombol Tengah Bersinar) */}
-        <button className="group relative -top-5 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-transform hover:scale-105">
+        {/* 🤖 THE NEXIA COMMAND CENTER (Tombol Tengah) */}
+        <button
+          onClick={toggleAiChat}
+          className="relative mx-1 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-500 md:h-11 md:w-11 md:group-hover:scale-110"
+        >
           <Sparkles
-            size={24}
+            size={20}
             className="transition-transform group-hover:rotate-12"
           />
         </button>
 
         {/* Tombol Kanan */}
-        <NavItem to="/cart" icon={<ShoppingCart size={22} />} label="Cart" />
-        <NavItem to="/profile" icon={<User size={22} />} label="Profile" />
+        <NavItem to="/cart" icon={<ShoppingCart size={20} />} label="Cart" />
+        <NavItem to="/profile" icon={<User size={20} />} label="Profile" />
       </div>
     </nav>
   );
 }
 
-// Sub-komponen agar kode rapi
+// Sub-komponen Tombol
 function NavItem({
   to,
   icon,
@@ -49,10 +59,16 @@ function NavItem({
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-1 text-zinc-400 transition-colors hover:text-white"
+      className="flex items-center justify-center overflow-hidden rounded-full p-2 text-zinc-400 transition-all duration-300 hover:bg-white/10 hover:text-white md:group-hover:px-4"
     >
       {icon}
-      <span className="text-[10px] font-medium md:hidden">{label}</span>
+      {/* 🔥 EFEK DYNAMIC ISLAND: 
+        Teks disembunyikan pakai max-w-0 (lebar nol). 
+        Saat Kapsul Utama di-hover (group-hover), teks akan meluncur keluar! 
+      */}
+      <span className="hidden max-w-0 overflow-hidden whitespace-nowrap pl-0 text-sm font-medium opacity-0 transition-all duration-500 ease-out md:block md:group-hover:max-w-[100px] md:group-hover:pl-2 md:group-hover:opacity-100">
+        {label}
+      </span>
     </Link>
   );
 }
