@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
@@ -36,8 +37,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="bg-zinc-950 text-white antialiased">
-        <FloatingNav />
-        <NexiaChat />
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -47,7 +46,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const location = useLocation();
+
+  // 🔥 RADAR KEAMANAN: Deteksi apakah URL saat ini mengandung kata "/auth"
+  const isAuthPage = location.pathname.startsWith("/auth");
+  return (
+    <>
+      {/* Tampilkan Navbar & AI Chat HANYA jika bukan di halaman Login/Register */}
+      {!isAuthPage && (
+        <>
+          <FloatingNav />
+          <NexiaChat />
+        </>
+      )}
+
+      <Outlet />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
