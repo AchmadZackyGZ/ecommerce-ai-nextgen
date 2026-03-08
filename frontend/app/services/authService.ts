@@ -11,4 +11,20 @@ export async function loginUser(email: string, password: string) {
   }
 }
 
-// Nanti Anda bisa tambahkan fungsi registerUser() di bawahnya
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string,
+) {
+  try {
+    const response = await apiClient.post("/users/register", {
+      name,
+      email,
+      password,
+    });
+    return response.data; // Biasanya berisi pesan sukses atau data user
+  } catch (error) {
+    console.error("Gagal Registrasi:", error);
+    throw error;
+  }
+}

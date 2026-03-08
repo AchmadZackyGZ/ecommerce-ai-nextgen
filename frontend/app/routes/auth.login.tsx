@@ -4,10 +4,13 @@ import { Sparkles, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner"; // Notifikasi premium kita
 import { loginUser } from "~/services/authService";
 import { useAuthStore } from "~/store/authStore";
+import { generateMeta } from "~/utils/seo";
 
-export function meta() {
-  return [{ title: "Login | Nexia Premium E-Commerce" }];
-}
+export const meta = () =>
+  generateMeta(
+    "Login",
+    "hai selamat datang kembali di Nexia, silakan masuk untuk melanjutkan belanja.",
+  );
 
 export default function Login() {
   const [email, setEmail] = useState("");

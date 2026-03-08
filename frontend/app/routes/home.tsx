@@ -1,6 +1,8 @@
 import type { Route } from "./+types/home";
 import ProductCard from "~/components/ecommerce/ProductCard";
 
+import { generateMeta } from "~/utils/seo";
+
 // Data dummy sementara agar kita bisa melihat bentuk desainnya
 const DUMMY_PRODUCTS = [
   {
@@ -37,15 +39,9 @@ const DUMMY_PRODUCTS = [
   },
 ];
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Nexia | NextGeneration Of E-Commerce App" },
-    {
-      name: "description",
-      content: "Belanja Kebutuhan Anda Dengan Pendamping AI Next-Generation",
-    },
-  ];
-}
+// SEO Dinamis dengan deskripsi khusus! ✨
+export const meta = () =>
+  generateMeta("Home", "Temukan produk yang anda inginkan di Nexia.");
 
 export default function Home() {
   return (
