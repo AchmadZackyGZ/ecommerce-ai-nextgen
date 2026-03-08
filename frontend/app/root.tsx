@@ -6,13 +6,16 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useNavigate,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 
+import { useAuthStore } from "./store/authStore";
 import FloatingNav from "./components/shared/FloatingNav";
 import NexiaChat from "./components/ecommerce/NexiaChat";
+import { useEffect } from "react";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -47,9 +50,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // 🔥 RADAR KEAMANAN: Deteksi apakah URL saat ini mengandung kata "/auth"
+  const token = useAuthStore((state) => state.token);
   const isAuthPage = location.pathname.startsWith("/auth");
+
+  useEffect(() => {
+    if (!token && !isAuthPage) {
+      navigate("/auth/login");
+    } else if (token && isAuthPage) {
+      navigate(
+        "/",
+        { replace: true }, // Supaya tidak bisa back ke login setelah login sukses);
+      );
+    }
+  }, [token, isAuthPage, navigate]);
+
   return (
     <>
       {/* Tampilkan Navbar & AI Chat HANYA jika bukan di halaman Login/Register */}

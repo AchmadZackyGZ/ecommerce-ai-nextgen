@@ -22,27 +22,19 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Telepon Backend Java Spring Boot
       const response = await loginUser(email, password);
 
-      // ⚠️ PENTING: Sesuaikan ini dengan bentuk JSON balasan dari Spring Boot Anda!
-      // Asumsi standar: response.data berisi { token: "ey...", user: {...} }
-      // Jika JSON Spring Boot Anda langsung mereturn token, gunakan: response.token
       const token = response.data?.token || response.token;
 
-      // Kita langsung ambil seluruh isi response.data (yang berisi name, role, dll)
-      // Jika email dari backend null, kita timpa dengan email yang diketik di form
       const user = { ...response.data, email: email };
 
       if (!token) throw new Error("Token tidak ditemukan dari server.");
 
-      // 2. Simpan token ke Brankas Zustand & LocalStorage
+      // Simpan token ke Brankas Zustand & LocalStorage
       login(token, user);
 
-      // 3. Munculkan notifikasi sukses yang cantik
       toast.success("Akses Diterima. Selamat datang di Nexia!");
 
-      // 4. Lemparkan user kembali ke halaman utama
       navigate("/");
     } catch (error: any) {
       console.error("Login Error:", error);
@@ -57,12 +49,11 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-zinc-950 px-4">
-      {/* 🌌 Efek Cahaya Kosmik di Belakang Card */}
+      {/*  Efek Cahaya Kosmik di Belakang Card */}
       <div className="absolute left-1/2 top-1/2 -z-10 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/20 blur-[120px]" />
 
       {/* 💳 Glassmorphism Card */}
       <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/50 p-8 shadow-2xl backdrop-blur-xl">
-        {/* Header Logo */}
         <div className="mb-8 flex flex-col items-center justify-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 shadow-[0_0_30px_rgba(6,182,212,0.4)]">
             <Sparkles className="text-white" size={32} />
