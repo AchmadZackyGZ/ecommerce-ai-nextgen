@@ -1,6 +1,10 @@
 package com.ecommerce.backend.config;
 
 import com.ecommerce.backend.repositories.UserRepository;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,6 +25,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -38,8 +46,10 @@ public class SecurityConfig {
    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults()) // Aktifkan CORS dengan konfigurasi default (bisa kita custom nanti)
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Biarkan preflight CORS lewat tanpa harus login
                 .requestMatchers("/api/users/register").permitAll() 
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/webhooks/**").permitAll() // Biarkan Midtrans mengirim notifikasi tanpa harus login
@@ -57,6 +67,24 @@ public class SecurityConfig {
             
         return http.build();
     }
+
+    @Bean // Konfigurasi CORS untuk mengizinkan Frontend kita mengakses API
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Izinkan Frontend Anda
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
+        // Izinkan semua metode
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Izinkan semua header (termasuk Authorization)
+        configuration.setAllowedHeaders(List.of("*"));
+        // Wajib jika Anda nanti pakai Cookie/Session
+        configuration.setAllowCredentials(true); 
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource(); // Buat sumber konfigurasi CORS
+        // Terapkan aturan ini ke semua endpoint API
+        source.registerCorsConfiguration("/**", configuration); 
+        return source;
+}
 
     // 2. Mesin Pencari User di Database
     @Bean
@@ -86,40 +114,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(); 
     }
 }
-
-// NOTE: File ini sudah dihapus karena kita pakai JWT untuk otentikasi, jadi aturan keamanan kita atur langsung di controller dan service, bukan di sini lagi. Tapi aku simpan dulu sebagai referensi kalau kamu mau lihat gimana aturan keamanan dasar di Spring Security itu dibuat. Kalau nanti mau pakai JWT, kita akan buat filter khusus untuk memeriksa token JWT di setiap request, bukan pakai konfigurasi ini lagi.
-// package com.ecommerce.backend.config;
-
-// import org.springframework.context.annotation.Bean;
-// import org.springframework.context.annotation.Configuration;
-// import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-// import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-// import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-// import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-// import org.springframework.security.crypto.password.PasswordEncoder;
-// import org.springframework.security.web.SecurityFilterChain;
-
-// @Configuration
-// @EnableWebSecurity
-// public class SecurityConfig {
-
-//     // 1. Aturan Pintu Gerbang Utama
-//     @Bean
-//     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//         http
-//             .csrf(AbstractHttpConfigurer::disable) // Matikan CSRF karena kita pakai API / JWT (Bukan Form HTML kuno)
-//             .authorizeHttpRequests(auth -> auth
-//                 .requestMatchers("/api/users/register").permitAll() // Bebas akses untuk daftar
-//                 .requestMatchers("/api/products/**").permitAll()    // Bebas akses untuk lihat produk
-//                 .anyRequest().authenticated()                       // Sisanya WAJIB punya tiket JWT!
-//             );
-            
-//         return http.build();
-//     }
-
-//     // 2. Mesin Pengacak Password (BCrypt)
-//     @Bean
-//     public PasswordEncoder passwordEncoder() {
-//         return new BCryptPasswordEncoder(); 
-//     }
-// }
