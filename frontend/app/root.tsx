@@ -17,6 +17,7 @@ import FloatingNav from "./components/shared/FloatingNav";
 import NexiaChat from "./components/ecommerce/NexiaChat";
 import { useEffect } from "react";
 import CartDrawer from "./components/ecommerce/CartDrawer";
+import TopNavbar from "./components/shared/TopNavbar";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -72,6 +73,7 @@ export default function App() {
       {/* Tampilkan Navbar & AI Chat HANYA jika bukan di halaman Login/Register */}
       {!isAuthPage && (
         <>
+          <TopNavbar />
           <FloatingNav />
           <NexiaChat />
           <CartDrawer />
