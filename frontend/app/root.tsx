@@ -16,6 +16,7 @@ import { useAuthStore } from "./store/authStore";
 import FloatingNav from "./components/shared/FloatingNav";
 import NexiaChat from "./components/ecommerce/NexiaChat";
 import { useEffect } from "react";
+import CartDrawer from "./components/ecommerce/CartDrawer";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -73,6 +74,7 @@ export default function App() {
         <>
           <FloatingNav />
           <NexiaChat />
+          <CartDrawer />
         </>
       )}
 
