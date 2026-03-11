@@ -1,72 +1,55 @@
-import type { Route } from "./+types/home";
-import ProductCard from "~/components/ecommerce/ProductCard";
-
 import { generateMeta } from "~/utils/seo";
+import ProductCard, { type ProductProps } from "~/components/ecommerce/ProductCard";
+import HeroBanner from "~/components/home/HeroBanner";
+import CategoryPills from "~/components/home/CategoryPills";
+import TimeDrops from "~/components/home/TimeDrops";
 
-// Data dummy sementara agar kita bisa melihat bentuk desainnya
-const DUMMY_PRODUCTS = [
-  {
-    id: 1,
-    name: "iPhone 15 Pro Max Titanium",
-    price: 25000000,
-    category: "Smartphone",
-    imageUrl:
-      "https://images.unsplash.com/photo-1696446701796-da61225697cc?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    name: "Laptop Gaming AI NextGen",
-    price: 35000000,
-    category: "Laptop",
-    imageUrl:
-      "https://images.unsplash.com/photo-1603302576837-37561b2e2302?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    name: "Sony WH-1000XM5 Noise Cancelling",
-    price: 5500000,
-    category: "Audio",
-    imageUrl:
-      "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    name: "Mechanical Keyboard Keychron",
-    price: 2100000,
-    category: "Accessories",
-    imageUrl:
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop",
-  },
+// Pabrik SEO Dinamis ✨
+export const meta = () => generateMeta("Home", "Temukan produk teknologi masa depan yang dikurasi oleh AI.");
+
+// Data Dummy sementara sebelum AI Backend mengambil alih
+const DUMMY_PRODUCTS: ProductProps[] = [
+  { id: 1, name: "iPhone 15 Pro Max Titanium", price: 25000000, category: "Smartphone", imageUrl: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=800&auto=format&fit=crop" },
+  { id: 2, name: "Laptop Gaming AI NextGen", price: 35000000, category: "Laptop", imageUrl: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?q=80&w=800&auto=format&fit=crop" },
+  { id: 3, name: "Sony WH-1000XM5 Noise Cancelling", price: 5500000, category: "Audio", imageUrl: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop" },
+  { id: 4, name: "Mechanical Keyboard Keychron", price: 2100000, category: "Accessories", imageUrl: "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop" },
 ];
-
-// SEO Dinamis dengan deskripsi khusus! ✨
-export const meta = () =>
-  generateMeta("Home", "Temukan produk yang anda inginkan di Nexia.");
 
 export default function Home() {
   return (
-    <main className="min-h-screen pb-32 pt-20">
+    <main className="min-h-screen pb-32 pt-28">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
-        {/* Header Section */}
-        <div className="mb-12 flex flex-col items-center justify-center text-center">
-          <h1 className="mb-4 text-5xl font-extrabold tracking-tight md:text-6xl">
-            Welcome to{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-              Nexia
-            </span>
-          </h1>
-          <p className="max-w-xl text-zinc-400">
-            Jelajahi koleksi teknologi premium kami. Belanja lebih cerdas dengan
-            bantuan kecerdasan buatan revolusioner.
-          </p>
+        
+        {/* 🌌 ZONA 1: THE COSMIC HERO BANNER */}
+        <HeroBanner />
+
+        {/* ⚡ ZONA 3: NEXIA TIME-DROPS  */}
+        {/* Nanti ini hanya akan merender data jika ada barang yang berstatus APPROVED oleh Admin */}
+        <div className="mt-12">
+          <TimeDrops />
         </div>
 
-        {/* BENTO BOX GRID */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 lg:grid-cols-4">
-          {DUMMY_PRODUCTS.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        {/* 💊 ZONA 2: NEON CATEGORY PILLS (Turun sedikit ke bawah) */}
+        <div className="mt-12">
+          <CategoryPills />
         </div>
+
+        {/* 🤖 ZONA 4: HYPER-PERSONALIZED AI GRID (Persiapan) */}
+        <div className="mt-16">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Curated for You by Nexia AI</h2>
+              <p className="text-sm text-zinc-400">Rekomendasi cerdas berdasarkan gaya belanja Anda.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {DUMMY_PRODUCTS.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+
       </div>
     </main>
   );
