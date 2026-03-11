@@ -5,13 +5,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "~/components/ui/sheet";
-import { userCartStore } from "~/store/cartStore";
+import { useCartStore } from "~/store/cartStore";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 
 export default function CartDrawer() {
   const { isOpen, toggleCart, items, removeItem, getTotalPrice, clearCart } =
-    userCartStore();
+    useCartStore();
 
   const handleCheckout = () => {
     if (items.length === 0) return;

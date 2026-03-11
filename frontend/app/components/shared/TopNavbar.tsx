@@ -1,10 +1,10 @@
 import { Link } from "react-router";
 import { Search, ShoppingCart, User } from "lucide-react";
-import { userCartStore } from "~/store/cartStore";
+import { useCartStore } from "~/store/cartStore";
 
 export default function TopNavbar() {
-  const toggleCart = userCartStore((state) => state.toggleCart);
-  const cartItems = userCartStore((state) => state.items);
+  const toggleCart = useCartStore((state) => state.toggleCart);
+  const cartItems = useCartStore((state) => state.items);
 
   return (
     <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">

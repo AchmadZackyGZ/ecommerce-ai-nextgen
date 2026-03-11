@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   Star,
 } from "lucide-react";
-import { userCartStore } from "~/store/cartStore";
+import { useCartStore } from "~/store/cartStore";
 import { toast } from "sonner";
 import { generateMeta } from "~/utils/seo";
 
@@ -37,8 +37,8 @@ export default function ProductDetail() {
   const navigate = useNavigate();
 
   // Memanggil fungsi dari brankas Cart kita
-  const addItem = userCartStore((state) => state.addItem);
-  const toggleCart = userCartStore((state) => state.toggleCart);
+  const addItem = useCartStore((state) => state.addItem);
+  const toggleCart = useCartStore((state) => state.toggleCart);
 
   // Fungsi ketika tombol ditekan
   const handleAddToCart = () => {
