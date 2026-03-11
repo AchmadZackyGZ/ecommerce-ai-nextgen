@@ -35,14 +35,14 @@ export default function CategoryPills() {
           return (
             <button
               key={cat.id}
-              className="group flex min-w-max items-center gap-3 rounded-2xl border border-white/10 bg-zinc-900/50 px-6 py-4 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10"
+              className="group flex min-w-max items-center gap-2.5 rounded-full border border-white/10 bg-zinc-900/50 px-4 py-2.5 md:px-5 md:py-3 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10"
             >
               <div
                 className={`flex items-center justify-center transition-transform group-hover:scale-110 ${cat.color}`}
               >
-                <Icon size={24} />
+                <Icon size={18} className="md:w-5 md:h-5" />
               </div>
-              <span className="font-semibold text-zinc-300 transition-colors group-hover:text-white">
+              <span className="text-sm font-medium text-zinc-300 transition-colors group-hover:text-white">
                 {cat.name}
               </span>
             </button>

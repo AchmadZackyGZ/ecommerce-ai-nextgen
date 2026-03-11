@@ -1,5 +1,6 @@
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { Link } from "react-router";
 
 // Blueprint data sementara sebelum kita sambungkan ke Java Spring Boot
 export interface ProductProps {
@@ -39,12 +40,12 @@ export default function ProductCard({ product }: { product: ProductProps }) {
 
         {/* Tombol Aksi */}
         <div className="mt-5 flex items-center justify-between px-1">
-          <Button
-            size="sm"
-            className="w-full rounded-full bg-white font-bold text-black transition-colors hover:bg-cyan-400 hover:text-black"
+          <Link
+            to={`/product/${product.id}`}
+            className="mt-4 flex w-full items-center justify-center rounded-xl bg-white py-2.5 text-sm font-bold text-black transition-transform hover:bg-zinc-200 active:scale-95"
           >
             Lihat Detail
-          </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>
