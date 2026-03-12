@@ -39,8 +39,8 @@ export default function TopNavbar() {
         {/* KANAN: Cart & Profile */}
         <div className="flex items-center gap-2 md:gap-4">
           {/* Tombol Keranjang */}
-          <button
-            onClick={toggleCart}
+          <Link
+            to="/cart"
             className="relative rounded-full p-2.5 text-zinc-400 transition-all hover:bg-white/10 hover:text-white"
           >
             <ShoppingCart size={22} />
@@ -49,7 +49,7 @@ export default function TopNavbar() {
                 {cartItems.length}
               </span>
             )}
-          </button>
+          </Link>
 
           {/* Tombol Profile */}
           <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-zinc-400 transition-all hover:border-cyan-500/50 hover:text-white">

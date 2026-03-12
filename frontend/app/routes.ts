@@ -7,4 +7,5 @@ export default [
   route("auth/register", "routes/auth.register.tsx"),
   route("product/:id", "routes/product.$id.tsx"),
   route("katalog", "routes/katalog.tsx"),
+  route("cart", "routes/cart.tsx"),
 ] satisfies RouteConfig;
