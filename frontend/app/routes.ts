@@ -11,4 +11,5 @@ export default [
   route("checkout", "routes/checkout.tsx"),
   route("pesanan", "routes/pesanan.tsx"),
   route("voucher", "routes/voucher.tsx"),
+  route("pengaturan", "routes/pengaturan.tsx"),
 ] satisfies RouteConfig;
