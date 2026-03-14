@@ -9,4 +9,5 @@ export default [
   route("katalog", "routes/katalog.tsx"),
   route("cart", "routes/cart.tsx"),
   route("checkout", "routes/checkout.tsx"),
+  route("pesanan", "routes/pesanan.tsx"),
 ] satisfies RouteConfig;
