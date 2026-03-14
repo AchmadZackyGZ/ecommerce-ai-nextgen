@@ -11,6 +11,8 @@ import {
   Percent,
   Info,
   AlertCircle,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 
@@ -20,16 +22,23 @@ export const meta = () =>
     "Kelola diskon dan promo eksklusif Nexia Anda.",
   );
 
-// 🎟️ DATA DUMMY VOUCHER (Simulasi Database)
+// 🎟️ DATA DUMMY VOUCHER DENGAN T&C
 const ACTIVE_VOUCHERS = [
   {
     id: "V-AI-001",
     title: "Diskon Nexia AI Optimal",
     description: "Potongan Rp 50.000 untuk semua produk Elektronik & Gadget.",
-    type: "DISCOUNT", // DISCOUNT | SHIPPING | CASHBACK
+    type: "DISCOUNT",
     minPurchase: 500000,
     validUntil: "Besok, 23:59 WIB",
-    isExpiringSoon: true, // 🚨 Trigger efek FOMO merah
+    isExpiringSoon: true,
+    tnc: [
+      "Minimal transaksi Rp 500.000 (belum termasuk ongkir).",
+      "Maksimal potongan harga Rp 50.000.",
+      "Berlaku untuk semua metode pembayaran yang tersedia di Nexia.",
+      "Hanya berlaku untuk kategori Gadget, Laptop, dan Audio.",
+      "Voucher tidak dapat digabungkan dengan promo Flash Sale.",
+    ],
   },
   {
     id: "V-SHIP-002",
@@ -40,6 +49,12 @@ const ACTIVE_VOUCHERS = [
     minPurchase: 100000,
     validUntil: "30 Mar 2026",
     isExpiringSoon: false,
+    tnc: [
+      "Minimal transaksi Rp 100.000.",
+      "Maksimal potongan ongkos kirim Rp 40.000.",
+      "Hanya berlaku untuk kurir Nexia Instant dan Hemat Kargo.",
+      "Berlaku untuk pengiriman ke seluruh wilayah Indonesia.",
+    ],
   },
   {
     id: "V-CASH-003",
@@ -50,6 +65,12 @@ const ACTIVE_VOUCHERS = [
     minPurchase: 250000,
     validUntil: "25 Mar 2026",
     isExpiringSoon: false,
+    tnc: [
+      "Minimal transaksi Rp 250.000.",
+      "Maksimal Cashback yang diberikan adalah 100.000 Koin Nexia.",
+      "Koin akan masuk otomatis setelah pesanan berstatus 'Selesai'.",
+      "Koin memiliki masa berlaku 3 bulan setelah diterima.",
+    ],
   },
 ];
 
@@ -66,7 +87,12 @@ const EXPIRED_VOUCHERS = [
 export default function VoucherWallet() {
   const [activeTab, setActiveTab] = useState("Aktif");
 
-  // Helper untuk render ikon berdasarkan tipe voucher
+  // 🧠 STATE UNTUK MODAL VOUCHER
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+
+  const openModal = (voucher: any) => setSelectedVoucher(voucher);
+  const closeModal = () => setSelectedVoucher(null);
+
   const renderVoucherIcon = (type: string) => {
     switch (type) {
       case "DISCOUNT":
@@ -81,13 +107,12 @@ export default function VoucherWallet() {
   };
 
   return (
-    <main className="min-h-screen pb-40 pt-28">
+    <main className="min-h-screen pb-40 pt-28 relative">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-          {/* 🛡️ KOLOM KIRI: SIDEBAR PROFIL */}
+          {/* 🛡️ SIDEBAR PROFIL */}
           <div className="lg:col-span-1">
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-2xl shadow-2xl">
-              {/* Profil Singkat */}
               <div className="flex items-center gap-4 border-b border-white/10 pb-6">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 font-bold text-white shadow-lg text-xl">
                   AZ
@@ -101,8 +126,6 @@ export default function VoucherWallet() {
                   </span>
                 </div>
               </div>
-
-              {/* Menu Navigasi (Dompet Voucher Aktif!) */}
               <nav className="flex flex-col gap-2">
                 <Link
                   to="/pesanan"
@@ -144,9 +167,8 @@ export default function VoucherWallet() {
             </div>
           </div>
 
-          {/* 🎟️ KOLOM KANAN: THE VOUCHER WALLET */}
+          {/* 🎟️ THE VOUCHER WALLET */}
           <div className="lg:col-span-3 flex flex-col gap-6">
-            {/* Banner Edukasi AI */}
             <div className="flex items-start md:items-center gap-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 backdrop-blur-md">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
                 <Zap size={20} />
@@ -163,7 +185,30 @@ export default function VoucherWallet() {
               </div>
             </div>
 
-            {/* TABS */}
+            {/* 🔥 NEW: PINTU KLAIM VOUCHER MANUAL */}
+            <div className="flex flex-col md:flex-row gap-4 rounded-2xl border border-white/10 bg-zinc-900/40 p-5 backdrop-blur-md items-center justify-between">
+              <div className="w-full md:w-auto">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Ticket size={18} className="text-purple-400" /> Klaim Voucher
+                  Toko / Referal
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Punya kode rahasia dari Seller atau Livestream? Masukkan di
+                  sini.
+                </p>
+              </div>
+              <div className="flex w-full md:w-96 rounded-xl overflow-hidden border border-white/10 bg-black/40 focus-within:border-cyan-500/50 transition-colors">
+                <input
+                  type="text"
+                  placeholder="Contoh: ZACKY100..."
+                  className="w-full bg-transparent px-4 py-2.5 text-sm text-white outline-none placeholder-zinc-600 font-mono uppercase"
+                />
+                <button className="bg-white text-black px-6 text-sm font-bold transition-colors hover:bg-zinc-200 active:scale-95">
+                  Klaim
+                </button>
+              </div>
+            </div>
+
             <div className="flex gap-4 border-b border-white/10 pb-px">
               <button
                 onClick={() => setActiveTab("Aktif")}
@@ -191,11 +236,11 @@ export default function VoucherWallet() {
                 {ACTIVE_VOUCHERS.map((voucher) => (
                   <div
                     key={voucher.id}
-                    className="relative flex h-36 rounded-2xl bg-zinc-900 border border-white/10 overflow-hidden shadow-lg transition-transform hover:-translate-y-1"
+                    onClick={() => openModal(voucher)} // 🔥 Klik di mana saja pada kartu memicu Modal
+                    className="group relative flex h-36 cursor-pointer rounded-2xl bg-zinc-900 border border-white/10 overflow-hidden shadow-lg transition-transform hover:-translate-y-1 hover:border-cyan-500/30"
                   >
-                    {/* Kiri: Ikon Tipe (Bagian Sobekan Tiket) */}
-                    <div className="flex w-28 shrink-0 flex-col items-center justify-center border-r-2 border-dashed border-zinc-800 bg-black/40 p-4">
-                      <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 shadow-inner">
+                    <div className="flex w-28 shrink-0 flex-col items-center justify-center border-r-2 border-dashed border-zinc-800 bg-black/40 p-4 transition-colors group-hover:border-zinc-700">
+                      <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 shadow-inner group-hover:bg-zinc-700/50">
                         {renderVoucherIcon(voucher.type)}
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
@@ -203,19 +248,16 @@ export default function VoucherWallet() {
                       </span>
                     </div>
 
-                    {/* Kanan: Detail Voucher */}
                     <div className="flex flex-1 flex-col justify-between p-4">
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="line-clamp-1 text-sm font-bold text-white">
+                          <h4 className="line-clamp-1 text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
                             {voucher.title}
                           </h4>
-                          <button
-                            className="text-zinc-500 hover:text-cyan-400"
-                            title="Syarat & Ketentuan"
-                          >
+                          {/* Tombol Info kini menjadi indikator visual klik */}
+                          <div className="text-zinc-500 group-hover:text-cyan-400">
                             <Info size={16} />
-                          </button>
+                          </div>
                         </div>
                         <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
                           {voucher.description}
@@ -239,18 +281,19 @@ export default function VoucherWallet() {
                             {voucher.validUntil}
                           </span>
                         </div>
+                        {/* Tombol Pakai menggunakan e.stopPropagation agar tidak men-trigger Modal saat mau pindah ke katalog */}
                         <Link
                           to="/katalog"
-                          className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-zinc-200"
+                          onClick={(e) => e.stopPropagation()}
+                          className="relative z-10 rounded-lg bg-white px-4 py-2 text-xs font-bold text-black transition-transform hover:scale-105 active:scale-95"
                         >
                           Pakai
                         </Link>
                       </div>
                     </div>
 
-                    {/* Lingkaran Dekorasi Tiket (Atas Bawah) */}
-                    <div className="absolute -top-3 left-[100px] h-6 w-6 rounded-full bg-zinc-950 border-b border-white/10"></div>
-                    <div className="absolute -bottom-3 left-[100px] h-6 w-6 rounded-full bg-zinc-950 border-t border-white/10"></div>
+                    <div className="absolute -top-3 left-[100px] h-6 w-6 rounded-full bg-zinc-950 border-b border-white/10 transition-colors group-hover:border-zinc-700"></div>
+                    <div className="absolute -bottom-3 left-[100px] h-6 w-6 rounded-full bg-zinc-950 border-t border-white/10 transition-colors group-hover:border-zinc-700"></div>
                   </div>
                 ))}
               </div>
@@ -294,6 +337,82 @@ export default function VoucherWallet() {
           </div>
         </div>
       </div>
+
+      {/* 🔮 THE HOLOGRAPHIC VOUCHER MODAL */}
+      {selectedVoucher && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop Blur Gelap */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={closeModal}
+          ></div>
+
+          {/* Panel Modal */}
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300">
+            {/* Header Biru/Ungu */}
+            <div className="relative bg-gradient-to-r from-cyan-900/40 to-purple-900/40 p-6 text-center">
+              <button
+                onClick={closeModal}
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 border border-white/10 shadow-lg">
+                {renderVoucherIcon(selectedVoucher.type)}
+              </div>
+              <h2 className="text-xl font-black text-white leading-tight">
+                {selectedVoucher.title}
+              </h2>
+              <p className="mt-2 text-sm text-cyan-100/80">
+                {selectedVoucher.description}
+              </p>
+            </div>
+
+            {/* Body: Expiry & T&C */}
+            <div className="p-6">
+              <div
+                className={`mb-6 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold ${selectedVoucher.isExpiringSoon ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}
+              >
+                {selectedVoucher.isExpiringSoon ? (
+                  <AlertCircle size={18} className="animate-pulse" />
+                ) : (
+                  <Clock size={18} />
+                )}
+                Berlaku s/d: {selectedVoucher.validUntil}
+              </div>
+
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                Syarat & Ketentuan
+              </div>
+              <ul className="flex flex-col gap-3">
+                {selectedVoucher.tnc.map((rule: string, idx: number) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-3 text-sm text-zinc-300"
+                  >
+                    <CheckCircle2
+                      size={16}
+                      className="mt-0.5 shrink-0 text-cyan-500/50"
+                    />
+                    <span className="leading-relaxed">{rule}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Footer Action */}
+            <div className="border-t border-white/10 bg-black/20 p-6">
+              <Link
+                to="/katalog"
+                className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+              >
+                Gunakan Voucher Sekarang
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
