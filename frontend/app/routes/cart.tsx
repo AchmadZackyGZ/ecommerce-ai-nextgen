@@ -216,12 +216,12 @@ export default function CartPage() {
                   </span>
                 </div>
 
-                <button
-                  disabled={getTotalItems() === 0}
-                  className="mt-4 w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                <Link
+                  to="/checkout"
+                  className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
                 >
                   Checkout Sekarang ({getTotalItems()})
-                </button>
+                </Link>
               </div>
             </div>
           </div>
