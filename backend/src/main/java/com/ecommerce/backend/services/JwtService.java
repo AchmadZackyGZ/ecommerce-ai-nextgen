@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
@@ -28,11 +29,11 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
-                .claims(new HashMap<>())
-                .subject(userDetails.getUsername()) 
-                .issuedAt(new Date(System.currentTimeMillis())) 
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration)) 
-                .signWith(getSignInKey(), Jwts.SIG.HS256)  
+                .setClaims(new HashMap<>()) // FIX: Pakai setClaims
+                .setSubject(userDetails.getUsername()) 
+                .setIssuedAt(new Date(System.currentTimeMillis())) 
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration)) 
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)  // FIX: Pakai SignatureAlgorithm
                 .compact();
     }
 
@@ -60,11 +61,11 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSignInKey()) 
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignInKey()) 
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody(); // FIX: getBody() menggantikan getPayload()
     }
 
     // Mengubah String Base64 menjadi Kunci Rahasia asli
