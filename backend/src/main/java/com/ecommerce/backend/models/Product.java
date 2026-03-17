@@ -39,6 +39,10 @@ public class Product {
 
     private String imageUrl; // Alamat gambar produk kita nanti
 
+    // 🔥 RELASI EVOLUSI V1: Satu Produk punya banyak Varian (Warna/Ukuran)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private java.util.List<ProductVariant> variants;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

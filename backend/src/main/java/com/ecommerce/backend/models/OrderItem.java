@@ -22,10 +22,10 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    // Barang apa yang dibeli?
-    @ManyToOne // Banyak order item bisa merujuk ke satu produk yang sama
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    // Barang (Varian) apa yang dibeli? (Evolusi V1)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id", nullable = false)
+    private ProductVariant variant;
 
     @Column(nullable = false)
     private Integer quantity;

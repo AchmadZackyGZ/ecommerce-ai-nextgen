@@ -20,10 +20,10 @@ public class CartItem {
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
 
-    // 🔥 RELASI 2: Barang apa yang dibeli? (Nunjuk ke tabel Product)
-    @ManyToOne
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    // 🔥 RELASI 2: Barang (Varian) apa yang dibeli? (Evolusi V1)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id", nullable = false)
+    private ProductVariant variant;
 
     // 🔥 Berapa banyak barang yang dibeli?
     @Column(nullable = false)
