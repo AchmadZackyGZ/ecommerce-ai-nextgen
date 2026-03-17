@@ -17,7 +17,7 @@ export async function registerUser(
   password: string,
 ) {
   try {
-    const response = await apiClient.post("/users/register", {
+    const response = await apiClient.post("/auth/register", {
       name,
       email,
       password,

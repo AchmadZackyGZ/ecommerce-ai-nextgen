@@ -50,8 +50,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Biarkan preflight CORS lewat tanpa harus login
-                .requestMatchers("/api/users/register").permitAll() 
-                .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/**").permitAll() // Biarkan semua endpoint di AuthController bisa diakses tanpa login (untuk login & register)
                 .requestMatchers("/api/webhooks/**").permitAll() // Biarkan Midtrans mengirim notifikasi tanpa harus login
                 
                 // 🔥 1. PERBAIKAN: HANYA GET yang public
