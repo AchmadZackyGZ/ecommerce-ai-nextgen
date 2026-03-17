@@ -2,6 +2,7 @@ package com.ecommerce.backend.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import okhttp3.Address;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,9 +27,10 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // Alamat tujuan pengiriman
-    @Column(nullable = false)
-    private String shippingAddress;
+    // Alamat tujuan pengiriman (Evolusi V1: Relasi ke tabel Address)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id", nullable = false)
+    private Address shippingAddress;
 
     // Total harga barang (sebelum diskon)
     @Column(nullable = false)
