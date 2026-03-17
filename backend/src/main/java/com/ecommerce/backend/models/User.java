@@ -2,6 +2,8 @@ package com.ecommerce.backend.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import okhttp3.Address;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -38,6 +40,17 @@ public class User implements org.springframework.security.core.userdetails.UserD
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    // 🔥 --- EVOLUSI NEXIA V1: RELASI BARU --- 🔥
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private java.util.List<Address> addresses;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private java.util.List<Order> orders;
+    
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Cart cart;
 
     // --- METHOD WAJIB DARI USERDETAILS SPRING SECURITY ---
 
