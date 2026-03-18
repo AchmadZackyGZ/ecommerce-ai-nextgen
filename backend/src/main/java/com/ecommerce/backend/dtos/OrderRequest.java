@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class OrderRequest {
-    private String shippingAddress;
+    private Long addressId;
     // Customer bisa masukin kode promo, bisa juga dikosongin (null)
     private String voucherCode; 
 }
