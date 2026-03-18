@@ -109,7 +109,7 @@ public class CartService {
                     BigDecimal finalPrice = item.getVariant().getProduct().getPrice().add(item.getVariant().getPriceModifier());
                     return CartItemResponse.builder()
                         .id(item.getId())
-                        .productId(item.getVariant().getProduct().getId())
+                        .variantId(item.getVariant().getId())
                         .productName(item.getVariant().getProduct().getName() + " - " + item. getVariant().getVariantName()) // Nama Gabungan
                         .price(finalPrice)
                         .quantity(item.getQuantity())

@@ -24,12 +24,12 @@ public class OrderService {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private CartRepository cartRepository;
     @Autowired private CartItemRepository cartItemRepository;
-    @Autowired private ProductRepository productRepository;
     @Autowired private VoucherRepository voucherRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private ShopRepository shopRepository;
+    @Autowired private ProductVariantRepository productVariantRepository;
+    @Autowired private AddressRepository addressRepository;
 
-    // 🔥 @Transactional WAJIB ADA! 
     // Artinya: Jika di tengah jalan gagal (misal stok habis), semua perubahan ditarik mundur (Rollback)!
     @Transactional
     public OrderResponse checkout(OrderRequest request, String userEmail) {
@@ -37,9 +37,13 @@ public class OrderService {
         // 1. Cari User dan Keranjangnya
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Keranjang tidak ditemukan!"));
 
+        Address shippingAddress = addressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new ResourceNotFoundException("Alamat pengiriman tidak ditemukan!"));
+        
         List<CartItem> cartItems = cart.getCartItems();
         if (cartItems.isEmpty()) {
             throw new BadRequestException("Keranjang belanja Anda masih kosong! Tidak bisa checkout.");
@@ -47,7 +51,11 @@ public class OrderService {
 
         // 2. Hitung SubTotal Murni (Harga Asli Barang x Kuantitas)
         BigDecimal subTotal = cartItems.stream()
-                .map(item -> item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
+                .map(item -> {
+                    // Harga dinamis: Harga Dasar Produk + Harga Tambahan Varian
+                  BigDecimal finalPrice = item.getVariant().getProduct().getPrice().add(item.getVariant().getPriceModifier());
+                    return finalPrice.multiply(new BigDecimal(item.getQuantity()));
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // 3. LOGIKA VOUCHER 
@@ -93,48 +101,40 @@ public class OrderService {
             grandTotal = BigDecimal.ZERO;
         }
 
-        // 5. Cetak Kepala Struk (Order)
-        Order order = Order.builder()
+       Order order = Order.builder()
                 .user(user)
-                .shippingAddress(request.getShippingAddress())
+                .shippingAddress(shippingAddress) // Simpan Entitas Address
                 .subTotal(subTotal)
                 .discount(discount)
                 .grandTotal(grandTotal)
-                .status(OrderStatus.PENDING) // Status awal selalu PENDING (Belum dibayar)
+                .status(OrderStatus.PENDING)
                 .orderDate(LocalDateTime.now())
                 .voucher(validVoucher)
                 .build();
-        
         Order savedOrder = orderRepository.save(order);
 
-        // 6. Cetak Rincian Barang (OrderItem) & POTONG STOK TOKO
-        List<OrderItem> orderItems = cartItems.stream().map(cartItem -> {
-            Product product = cartItem.getProduct();
-            
-            // Validasi Stok (Siapa tahu saat checkout, barang sudah dibeli orang lain!)
-            if (product.getStock() < cartItem.getQuantity()) {
-                throw new BadRequestException("Gagal Checkout! Stok produk '" + product.getName() + "' tidak mencukupi. Sisa stok: " + product.getStock());
+       List<OrderItem> orderItems = cartItems.stream().map(cartItem -> {
+            ProductVariant variant = cartItem.getVariant();
+            if (variant.getStock() < cartItem.getQuantity()) {
+                throw new BadRequestException("Gagal Checkout! Stok produk '" + variant.getProduct().getName() + "' tidak mencukupi.");
             }
+            // 🔥 Potong stok dari Varian
+            variant.setStock(variant.getStock() - cartItem.getQuantity());
+            productVariantRepository.save(variant);
 
-            // Eksekusi Potong Stok
-            product.setStock(product.getStock() - cartItem.getQuantity());
-            productRepository.save(product); // Simpan sisa stok baru
-
+            BigDecimal finalPrice = variant.getProduct().getPrice().add(variant.getPriceModifier());
             return OrderItem.builder()
                     .order(savedOrder)
-                    .product(product)
+                    .variant(variant) //  Simpan Varian di OrderItem
                     .quantity(cartItem.getQuantity())
-                    .price(product.getPrice()) // Bekukan harga saat ini
+                    .price(finalPrice)
                     .build();
         }).collect(Collectors.toList());
 
         orderItemRepository.saveAll(orderItems);
-
-        // 7. SAPU BERSIH KERANJANG! (Checkout sukses, keranjang harus kosong)
         cartItemRepository.deleteAll(cartItems);
-        cart.getCartItems().clear(); // Kosongkan list di memori juga
+        cart.getCartItems().clear();
 
-        // 8. Berikan kembalian JSON
         return mapToOrderResponse(savedOrder, orderItems);
     }
 
@@ -183,7 +183,7 @@ public class OrderService {
 
         // 🔥 VALIDASI KEAMANAN: Pastikan pesanan ini benar-benar memuat barang dari toko si Seller!
         boolean isOwner = order.getOrderItems().stream()
-                .anyMatch(item -> item.getProduct().getShop().getId().equals(shop.getId()));
+                .anyMatch(item -> item.getVariant().getProduct().getShop().getId().equals(shop.getId()));
 
         if (!isOwner) {
             throw new BadRequestException("Akses Ditolak: Anda tidak bisa memproses pesanan toko lain!");
@@ -229,12 +229,12 @@ public class OrderService {
         return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());
     }
 
-    // Fungsi Helper untuk merapikan JSON Balasan
+   // 🔥 PERBAIKAN Helper Method
     private OrderResponse mapToOrderResponse(Order order, List<OrderItem> items) {
         List<OrderItemResponse> itemResponses = items.stream().map(item ->
                 OrderItemResponse.builder()
-                        .productId(item.getProduct().getId())
-                        .productName(item.getProduct().getName())
+                        .productId(item.getVariant().getProduct().getId()) // 🔥 Ambil dari Varian
+                        .productName(item.getVariant().getProduct().getName() + " (" + item.getVariant().getVariantName() + ")")
                         .quantity(item.getQuantity())
                         .price(item.getPrice())
                         .subTotal(item.getPrice().multiply(new BigDecimal(item.getQuantity())))
@@ -244,7 +244,7 @@ public class OrderService {
         return OrderResponse.builder()
                 .orderId(order.getId())
                 .customerName(order.getUser().getName())
-                .shippingAddress(order.getShippingAddress())
+                .shippingAddress(order.getShippingAddress().getFullAddress()) // 🔥 Ekstrak String dari Entitas Address
                 .subTotal(order.getSubTotal())
                 .discount(order.getDiscount())
                 .grandTotal(order.getGrandTotal())

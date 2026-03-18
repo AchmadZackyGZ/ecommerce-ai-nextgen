@@ -30,7 +30,7 @@ public class OrderTools {
 
         Order order = orderOpt.get();
         String status = order.getStatus().name();
-        String address = order.getShippingAddress();
+        String address = order.getShippingAddress().getFullAddress();
         
         // Terjemahkan status untuk AI agar dia bisa menjelaskan dengan bahasa manusia
         return switch (status) {

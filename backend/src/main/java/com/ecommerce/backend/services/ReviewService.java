@@ -52,7 +52,7 @@ public class ReviewService {
         boolean hasBought = orderRepository.findByUser(user).stream()
                 .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
                 .flatMap(order -> order.getOrderItems().stream())
-                .anyMatch(item -> item.getProduct().getId().equals(productId));
+                .anyMatch(item -> item.getVariant().getProduct().getId().equals(productId));
 
         if (!hasBought) {
             throw new BadRequestException("Ditolak! Anda belum pernah membeli barang ini atau pesanan belum Selesai (COMPLETED).");
