@@ -8,10 +8,11 @@ import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 import com.ecommerce.backend.models.Cart;
 import com.ecommerce.backend.models.CartItem;
 import com.ecommerce.backend.models.Product;
+import com.ecommerce.backend.models.ProductVariant;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.CartItemRepository;
 import com.ecommerce.backend.repositories.CartRepository;
-import com.ecommerce.backend.repositories.ProductRepository;
+import com.ecommerce.backend.repositories.ProductVariantRepository;
 import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,10 +32,10 @@ public class CartService {
     private CartItemRepository cartItemRepository;
 
     @Autowired
-    private ProductRepository productRepository;
+    private UserRepository userRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private ProductVariantRepository productVariantRepository;
 
     // --- 1. FITUR MENAMBAH BARANG KE KERANJANG ---
     public CartResponse addToCart(CartItemRequest request, String userEmail) {
@@ -46,23 +47,23 @@ public class CartService {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Keranjang tidak ditemukan!"));
 
-        // 3. Cari Barang yang mau dibeli
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan!"));
+        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new ResourceNotFoundException("Varian produk tidak ditemukan!"));
+        Product product = variant.getProduct();
 
-        // 🔥 LOGIKA DEWA ANDA: Cegah Seller beli barangnya sendiri!
+        //  Cegah Seller beli barangnya sendiri!
         if (product.getShop().getOwner().getId().equals(user.getId())) {
-            throw new BadRequestException("Dilarang melakukan manipulasi! Anda tidak bisa memasukkan barang dari toko Anda sendiri ke keranjang.");
+                throw new BadRequestException("Dilarang melakukan manipulasi! Anda tidak bisa memasukkan barang dari toko Anda sendiri ke keranjang.");
         }
 
-        // 4. Cek ketersediaan Stok
-        if (product.getStock() < request.getQuantity()) {
-            throw new BadRequestException("Stok tidak mencukupi! Sisa stok: " + product.getStock());
+        //  Cek ketersediaan Stok dari VARIAN, bukan Produk induk
+        if (variant.getStock() < request.getQuantity()) {
+                throw new BadRequestException("Stok tidak mencukupi! Sisa stok varian ini: " + variant.getStock());
         }
 
         // 5. Cek apakah barang ini sudah ada di keranjang sebelumnya?
         Optional<CartItem> existingCartItem = cart.getCartItems().stream()
-                .filter(item -> item.getProduct().getId().equals(product.getId()))
+                .filter(item -> item.getVariant().getId().equals(variant.getId()))
                 .findFirst();
 
         if (existingCartItem.isPresent()) {
@@ -71,8 +72,8 @@ public class CartService {
             int newQuantity = item.getQuantity() + request.getQuantity();
             
             // Cek stok lagi untuk total quantity baru
-            if (product.getStock() < newQuantity) {
-                throw new BadRequestException("Stok tidak mencukupi untuk penambahan ini! Sisa stok: " + product.getStock());
+            if (variant.getStock() < newQuantity) {
+                throw new BadRequestException("Stok tidak mencukupi untuk penambahan ini! Sisa stok: " + variant.getStock());
             }
             
             item.setQuantity(newQuantity);
@@ -81,7 +82,7 @@ public class CartService {
             // Jika BELUM ADA, buat CartItem baru
             CartItem newItem = CartItem.builder()
                     .cart(cart)
-                    .product(product)
+                    .variant(variant)
                     .quantity(request.getQuantity())
                     .build();
             cartItemRepository.save(newItem); // Simpan ke DB
@@ -101,28 +102,24 @@ public class CartService {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Keranjang tidak ditemukan!"));
 
-        // Ubah Entitas CartItem ke DTO CartItemResponse
+        // Hitung harga dinamis untuk setiap item di keranjang, lalu konversi ke CartItemResponse
         List<CartItemResponse> itemResponses = cart.getCartItems().stream()
-                .map(item -> CartItemResponse.builder()
+                .map(item -> {
+                //  Hitung harga dinamis: Harga Dasar Produk + Harga Tambahan Varian
+                    BigDecimal finalPrice = item.getVariant().getProduct().getPrice().add(item.getVariant().getPriceModifier());
+                    return CartItemResponse.builder()
                         .id(item.getId())
-                        .productId(item.getProduct().getId())
-                        .productName(item.getProduct().getName())
-                        .price(item.getProduct().getPrice())
+                        .productId(item.getVariant().getProduct().getId())
+                        .productName(item.getVariant().getProduct().getName() + " - " + item. getVariant().getVariantName()) // Nama Gabungan
+                        .price(finalPrice)
                         .quantity(item.getQuantity())
-                        .subTotal(item.getProduct().getPrice().multiply(new BigDecimal(item.getQuantity())))
-                        .build())
-                .collect(Collectors.toList());
+                        .subTotal(finalPrice.multiply(new BigDecimal(item.getQuantity())))
+                        .build();
+                }).collect(Collectors.toList());
 
-        // 🔥 CARA MENJUMLAHKAN (SUM) LIST BIG DECIMAL DI JAVA:
-        BigDecimal totalPrice = itemResponses.stream()
-                .map(CartItemResponse::getSubTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+       BigDecimal totalPrice = itemResponses.stream().map(CartItemResponse::getSubTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return CartResponse.builder()
-                .cartId(cart.getId())
-                .items(itemResponses)
-                .totalPrice(totalPrice)
-                .build();
+        return CartResponse.builder().cartId(cart.getId()).items(itemResponses).totalPrice(totalPrice).build();
     }
 
     // --- 3. FITUR MENGUBAH JUMLAH BARANG DI KERANJANG ---
@@ -146,8 +143,8 @@ public class CartService {
             cartItemRepository.delete(cartItem);
         } else {
             // Cek apakah stok toko masih cukup untuk jumlah yang baru
-            if (cartItem.getProduct().getStock() < newQuantity) {
-                throw new BadRequestException("Stok tidak mencukupi! Sisa stok: " + cartItem.getProduct().getStock());
+            if (cartItem.getVariant().getStock() < newQuantity) {
+                throw new BadRequestException("Stok tidak mencukupi! Sisa stok: " + cartItem.getVariant().getStock());
             }
             // Update dan simpan
             cartItem.setQuantity(newQuantity);
@@ -175,7 +172,7 @@ public class CartService {
         }
 
         // Simpan nama barang yang akan dihapus untuk dikembalikan sebagai pesan sukses
-        String deletedProductName = cartItem.getProduct().getName();
+        String deletedProductName = cartItem.getVariant().getProduct().getName() + " - " + cartItem.getVariant().getVariantName();
 
         // Eksekusi Hapus!
         cartItemRepository.delete(cartItem);
