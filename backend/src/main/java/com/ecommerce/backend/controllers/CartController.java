@@ -21,11 +21,11 @@ public class CartController {
     @Autowired
     private CartService cartService;
 
-    // 1. API untuk menambah barang ke keranjang
+    // --- 1. API untuk menambah barang ke keranjang (EVOLUSI V1) ---
     @PostMapping
     public ResponseEntity<ApiResponse<CartResponse>> addToCart(
-            @RequestBody CartItemRequest request,
-            Principal principal // Mengambil email user yang sedang login
+            @RequestBody CartItemRequest request, // 🔥 Otomatis menangkap variantId dari Frontend React
+            Principal principal 
     ) {
         String email = principal.getName();
         CartResponse cartResponse = cartService.addToCart(request, email);
@@ -39,10 +39,10 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    // 2. API untuk melihat seluruh isi keranjang dan total harga
+    // --- 2. API untuk melihat seluruh isi keranjang dan total harga ---
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCart(Principal principal) {
-        String email = principal.getName(); // Mengambil email user yang sedang login
+        String email = principal.getName(); 
         CartResponse cartResponse = cartService.getCart(email);
 
         ApiResponse<CartResponse> response = ApiResponse.<CartResponse>builder()
@@ -54,12 +54,12 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    // 3. API untuk mengubah jumlah barang (Update Quantity)
+    // --- 3. API untuk mengubah jumlah barang (Update Quantity) ---
     @PutMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
             @PathVariable Long cartItemId,
             @RequestParam Integer quantity, // 💡 Kita pakai Query Param agar simpel: ?quantity=5
-            Principal principal // Mengambil email user yang sedang login
+            Principal principal 
     ) {
         String email = principal.getName();
         CartResponse cartResponse = cartService.updateCartItem(cartItemId, quantity, email);
@@ -73,25 +73,24 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    // 4. API untuk menghapus barang dari keranjang (Delete Item)
+    // --- 4. API untuk menghapus barang dari keranjang (Delete Item) ---
     @DeleteMapping("/{cartItemId}")
     public ResponseEntity<ApiResponse<CartResponse>> deleteCartItem(
-            @PathVariable Long cartItemId, // ID barang di keranjang yang ingin dihapus
-            Principal principal // Mengambil email user yang sedang login
+            @PathVariable Long cartItemId, 
+            Principal principal 
     ) {
         String email = principal.getName();
         
-        // Hapus barang dan TANGKAP nama barangnya dari Service
+        // Hapus barang dan TANGKAP nama barangnya dari Service (Sekarang nama Varian ikut terbawa!)
         String deletedName = cartService.deleteCartItem(cartItemId, email);
 
         // Ambil data keranjang terbaru (yang sudah kosong/berkurang itemnya)
-        CartResponse LastCartResponse = cartService.getCart(email);
+        CartResponse lastCartResponse = cartService.getCart(email);
 
         ApiResponse<CartResponse> response = ApiResponse.<CartResponse>builder()
                 .status(HttpStatus.OK.value())
-                // Sekarang variabel deletedName sudah valid!
                 .message("Barang '" + deletedName + "' berhasil dihapus dari keranjang.")
-                .data(LastCartResponse)
+                .data(lastCartResponse)
                 .build();
 
         return ResponseEntity.ok(response);

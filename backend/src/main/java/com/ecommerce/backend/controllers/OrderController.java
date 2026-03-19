@@ -15,25 +15,25 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
-// 🔥 GEMBOK SAKTI: Semua user yang teregistrasi boleh berbelanja!
+//   Semua user yang teregistrasi boleh berbelanja!
 @PreAuthorize("hasRole('CUSTOMER') or hasRole('SELLER')")
 public class OrderController {
 
     @Autowired
     private OrderService orderService;
 
-    // API UTAMA: Eksekusi Checkout & Cetak Struk
+    // --- 1. API UTAMA: Eksekusi Checkout & Cetak Struk (EVOLUSI V1) ---
     @PostMapping("/checkout")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
-            @RequestBody OrderRequest request,
-            Principal principal // Mengambil email user yang sedang login
+            @RequestBody OrderRequest request, //  Spring Boot otomatis menangkap addressId di sini!
+            Principal principal 
     ) {
         // Panggil otak kasir kita!
         OrderResponse orderResponse = orderService.checkout(request, principal.getName());
 
         ApiResponse<OrderResponse> response = ApiResponse.<OrderResponse>builder()
                 .status(HttpStatus.CREATED.value())
-                .message("CHECKOUT BERHASIL! Pesanan Anda sedang diproses.")
+                .message("CHECKOUT BERHASIL! Pesanan Anda sedang diproses dan akan dikirim ke alamat yang dipilih.")
                 .data(orderResponse)
                 .build();
 
@@ -41,7 +41,7 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // API KEDUA: Melihat Riwayat Belanja User
+    // --- 2. API KEDUA: Melihat Riwayat Belanja User ---
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrderHistory(Principal principal) {
         
@@ -56,7 +56,7 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    // 3. API KETIGA: Konfirmasi Pesanan Diterima (Menjadi COMPLETED)
+    // --- 3. API KETIGA: Konfirmasi Pesanan Diterima (Menjadi COMPLETED) ---
     @PutMapping("/{orderId}/complete")
     public ResponseEntity<ApiResponse<OrderResponse>> completeOrder(
             @PathVariable Long orderId,
