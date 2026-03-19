@@ -17,5 +17,7 @@ public class ProductResponse {
     // 🔥 TAMBAHKAN INI UNTUK INFO TOKO
     private Long shopId;
     private String shopName;
+    //  EVOLUSI V1: Tambahkan gerbong khusus untuk membawa data Varian ke Frontend!
+    private java.util.List<ProductVariantResponse> variants;
     private LocalDateTime createdAt;
 }
