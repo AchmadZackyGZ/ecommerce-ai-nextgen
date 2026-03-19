@@ -2,7 +2,6 @@ package com.ecommerce.backend.models;
 
 import jakarta.persistence.*;
 import lombok.*;
-import okhttp3.Address;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;

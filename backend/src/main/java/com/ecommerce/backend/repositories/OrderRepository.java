@@ -16,6 +16,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUser(User user);
 
     // 🔥 FITUR SELLER BARU: Mencari semua pesanan yang mengandung produk dari toko ini
-    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi WHERE oi.product.shop = :shop")
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi WHERE oi.variant.product.shop = :shop")
     List<Order> findOrdersByShop(@Param("shop") Shop shop);
 }
