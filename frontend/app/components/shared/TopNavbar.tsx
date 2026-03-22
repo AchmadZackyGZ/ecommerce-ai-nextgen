@@ -12,9 +12,11 @@ import {
   X,
 } from "lucide-react";
 import { useCartStore } from "~/store/cartStore";
+import { useAuthStore } from "~/store/authStore";
 
 export default function TopNavbar() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const cartItems = useCartStore((state) => state.items);
   const totalCartItems = cartItems.reduce(
     (total, item) => total + item.quantity,
@@ -25,6 +27,16 @@ export default function TopNavbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // State khusus untuk tap di Mobile
+
+  // Fungsi cerdas pembuat Inisial (Misal: "Achmad Ghoutsu" -> "AG", "Budi" -> "BU")
+  const getInitial = (name: string) => {
+    if (!name) return "NX"; // fallback jika name kosong
+    const words = name.split(" ");
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   // Fungsi Eksekusi Pencarian (Melempar query ke halaman Katalog)
   const handleSearch = (e: React.FormEvent) => {
@@ -119,14 +131,14 @@ export default function TopNavbar() {
                   {/* Header Profil Singkat */}
                   <div className="flex items-center gap-4 border-b border-white/10 p-3 pb-4">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-purple-600 font-black text-white shadow-lg text-lg">
-                      AZ
+                      {user ? getInitial(user.name) : "NX"}
                     </div>
                     <div className="flex flex-col">
                       <h3 className="text-base font-bold text-white leading-tight">
-                        Achmad Zacky
+                        {user ? user.name : "Guest"}
                       </h3>
                       <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-cyan-400">
-                        <ShieldCheck size={14} /> Nexia Elite Member
+                        <ShieldCheck size={14} /> {user?.role || "Member"}
                       </span>
                     </div>
                   </div>

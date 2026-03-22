@@ -8,6 +8,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
+import { Toaster } from "~/components/ui/sonner";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -43,6 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-zinc-950 text-white antialiased">
         {children}
+        <Toaster richColors position="top-right" />
         <ScrollRestoration />
         <Scripts />
       </body>
