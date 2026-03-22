@@ -49,8 +49,8 @@ public class ProductService {
     private ProductVariantRepository productVariantRepository; 
 
     // membuat product baru (CREATE Product)
-    @Transactional // Wajib pakai ini agar jika varian gagal dibuat, produk juga batal dibuat
-    public ProductResponse createProduct(ProductRequest request, MultipartFile image ,String sellerEmail) {
+   @Transactional 
+    public ProductResponse createProduct(ProductRequest request, MultipartFile image, String variantsJson, String sellerEmail) {
 
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!")); 
@@ -62,7 +62,7 @@ public class ProductService {
             throw new BadRequestException("Akses Ditolak: Toko Anda masih berstatus " + shop.getStatus() + ". Tunggu persetujuan Admin untuk mulai berjualan.");
         }
 
-        // 🚀 PROSES UPLOAD GAMBAR KE CLOUDINARY (TETAP AMAN!)
+        // 🚀 PROSES UPLOAD GAMBAR KE CLOUDINARY
         String uploadedImageUrl = null;
         if (image != null && !image.isEmpty()) {
             uploadedImageUrl = cloudinaryService.uploadImage(image);
@@ -79,17 +79,40 @@ public class ProductService {
 
         Product savedProduct = productRepository.save(product); 
 
-        //  LOGIKA V1: OTOMATIS BUAT VARIAN "ORIGINAL" AGAR PRODUK BISA DIBELI!
-        ProductVariant defaultVariant = ProductVariant.builder()
-                .product(savedProduct)
-                .variantName("Original") // Nama varian bawaan
-                .priceModifier(BigDecimal.ZERO) // Tidak ada tambahan harga
-                .stock(request.getStock()) // Stok mengikuti stok induk
-                .build();
-        productVariantRepository.save(defaultVariant);
+        // 🔥 LOGIKA V1 MUTAKHIR: MEMBACA JSON VARIAN DARI POSTMAN!
+        List<ProductVariant> savedVariants = new ArrayList<>();
 
-        // Pasangkan varian ke produk untuk dikirim sebagai balasan
-        savedProduct.setVariants(List.of(defaultVariant));
+        if (variantsJson != null && !variantsJson.isEmpty()) {
+            try {
+                // Mesin Penerjemah JSON ke Java
+                ObjectMapper mapper = new ObjectMapper();
+                List<Map<String, Object>> variantList = mapper.readValue(variantsJson, new TypeReference<List<Map<String, Object>>>() {});
+                
+                // Looping dan buat Varian satu per satu
+                for (Map<String, Object> varData : variantList) {
+                    ProductVariant variant = ProductVariant.builder()
+                            .product(savedProduct)
+                            .variantName(varData.get("name").toString())
+                            .priceModifier(new BigDecimal(varData.get("priceModifier").toString()))
+                            .stock(Integer.parseInt(varData.get("stock").toString()))
+                            .build();
+                    savedVariants.add(productVariantRepository.save(variant));
+                }
+            } catch (Exception e) {
+                throw new BadRequestException("Format varian salah! Pastikan menggunakan JSON Array yang benar di Postman.");
+            }
+        } else {
+            // 🛡️ FALLBACK: Jika di Postman lupa diisi variannya, kita buatkan "Original"
+            ProductVariant defaultVariant = ProductVariant.builder()
+                    .product(savedProduct)
+                    .variantName("Original")
+                    .priceModifier(BigDecimal.ZERO)
+                    .stock(request.getStock())
+                    .build();
+            savedVariants.add(productVariantRepository.save(defaultVariant));
+        }
+
+        savedProduct.setVariants(savedVariants);
 
         return mapToResponse(savedProduct);
     }
