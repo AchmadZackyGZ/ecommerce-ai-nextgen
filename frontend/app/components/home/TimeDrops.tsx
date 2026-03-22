@@ -6,43 +6,11 @@ import ProductCard, {
   type ProductProps,
 } from "~/components/ecommerce/ProductCard";
 
-// Data Dummy khusus untuk barang APPROVED Admin di Zona 3
-const timeDropProducts: ProductProps[] = [
-  {
-    id: 901,
-    name: "Sony WH-1000XM5 Noise Cancelling",
-    price: 3999000,
-    category: "Audio",
-    imageUrl:
-      "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 902,
-    name: "Mechanical Keyboard Keychron Q1 Pro",
-    price: 2850000,
-    category: "Accessories",
-    imageUrl:
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 903,
-    name: "Apple Watch Ultra 2 GPS + Cellular",
-    price: 12500000,
-    category: "Wearables",
-    imageUrl:
-      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: 904,
-    name: "Razer DeathAdder V3 Pro Wireless",
-    price: 1950000,
-    category: "Gaming",
-    imageUrl:
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop",
-  },
-];
+interface TimeDropProps {
+  products: any[];
+}
 
-export default function TimeDrops() {
+export default function TimeDrops({ products }: TimeDropProps) {
   const [timeLeft, setTimeLeft] = useState({
     hours: 2,
     minutes: 0,
@@ -119,7 +87,7 @@ export default function TimeDrops() {
 
       {/* 🔥 FIX: Ditambah snap-x untuk efek scroll mulus HP */}
       <div className="flex w-full gap-4 md:gap-6 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative z-10 snap-x snap-mandatory">
-        {timeDropProducts.map((product) => (
+        {products.map((product) => (
           // 🔥 THE MAGIC FIX: Pakai w-[200px] dan flex-none! Memaksa ukuran kartu agar tidak meledak
           <div
             key={product.id}

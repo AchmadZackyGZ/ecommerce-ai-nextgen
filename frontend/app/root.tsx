@@ -55,11 +55,12 @@ export default function App() {
   const navigate = useNavigate();
 
   const token = useAuthStore((state) => state.token);
-  const isAuthPage = location.pathname.startsWith("/auth");
+  const isAuthPage =
+    location.pathname === "/login" || location.pathname === "/register";
 
   useEffect(() => {
     if (!token && !isAuthPage) {
-      navigate("/auth/login");
+      navigate("/login");
     } else if (token && isAuthPage) {
       navigate(
         "/",

@@ -131,7 +131,7 @@ export default function Login() {
         <div className="mt-8 text-center text-sm text-zinc-500">
           Belum memiliki akun?{" "}
           <Link
-            to="/auth/register"
+            to="/register"
             className="font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
           >
             Daftar Sekarang

@@ -29,7 +29,7 @@ export default function Register() {
       toast.success("Akun berhasil dibuat! Silakan Login.");
 
       // 3. Lemparkan ke halaman Login
-      navigate("/auth/login");
+      navigate("/login");
     } catch (error: any) {
       console.error("Register Error:", error);
       toast.error(
@@ -76,7 +76,7 @@ export default function Register() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full rounded-2xl border border-white/10 bg-black/40 py-3.5 pl-12 pr-4 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-purple-500/50 focus:bg-black/60 focus:ring-1 focus:ring-purple-500/50"
-                placeholder="Achmad Zacky"
+                placeholder="John Doe"
               />
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function Register() {
         <div className="mt-6 text-center text-sm text-zinc-500">
           Sudah memiliki akun?{" "}
           <Link
-            to="/auth/login"
+            to="/login"
             className="font-semibold text-purple-400 transition-colors hover:text-purple-300"
           >
             Masuk di sini
