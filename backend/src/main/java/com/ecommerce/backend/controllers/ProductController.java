@@ -26,10 +26,12 @@ public class ProductController {
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-            // 🔥 UBAH 1: Ganti @RequestBody menjadi @ModelAttribute agar bisa menerima Teks di dalam Form-Data
+            //  UBAH 1: Ganti @RequestBody menjadi @ModelAttribute agar bisa menerima Teks di dalam Form-Data
             @ModelAttribute ProductRequest request,
-            // 🔥 UBAH 2: Tambahkan Penangkap File Foto
+            //  UBAH 2: Tambahkan Penangkap File Foto
             @RequestParam(value = "image", required = true) MultipartFile image,
+            //  TANGKAP TEKS JSON VARIAN DARI POSTMAN DI SINI:
+            @RequestParam(value = "variants", required = false) String variantsJson,
             Principal principal
         ) {
 
@@ -37,7 +39,7 @@ public class ProductController {
         String email = principal.getName();
         
         // Proses datanya di Service
-        ProductResponse savedData = productService.createProduct(request, image, email);
+        ProductResponse savedData = productService.createProduct(request, image, variantsJson ,email);
         
         // Bungkus dengan ApiResponse
         ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
