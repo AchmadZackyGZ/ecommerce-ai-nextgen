@@ -97,17 +97,22 @@ public class ProductController {
     }
 
     // 5. Endpoint DELETE (Menghapus produk berdasarkan ID)
-    // 🔥 HANYA ADMIN YANG BOLEH HAPUS PRODUK (Contoh ketat)
+    // 🔥 HANYA ADMIN YANG BOLEH HAPUS karena 
     // Atau jika Seller juga boleh hapus: @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SELLER')") // Contoh: Seller juga boleh hapus produk mereka sendiri
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Object>> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> deleteProduct(@PathVariable Long id) {
+        
+        // 1. Hapus produk dan tangkap nama barangnya dari Service
+        String deletedProductName = productService.deleteProduct(id);
+        
+        // 2. Ambil daftar produk terbaru yang sudah bersih dari barang yang dihapus
+        List<ProductResponse> remainingProducts = productService.getAllProducts();
 
-        ApiResponse<Object> response = ApiResponse.<Object>builder()
+        ApiResponse<List<ProductResponse>> response = ApiResponse.<List<ProductResponse>>builder()
                 .status(HttpStatus.OK.value())
-                .message("Berhasil menghapus data produk dengan ID: " + id)
-                .data(null)
+                .message("Produk '" + deletedProductName + "' berhasil dihilangkan dari katalog.")
+                .data(remainingProducts) // 🔥 DATA TIDAK NULL LAGI! FRONTEND AKAN SANGAT BAHAGIA!
                 .build();
 
         return ResponseEntity.ok(response);
