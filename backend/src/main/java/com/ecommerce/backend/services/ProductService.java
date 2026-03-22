@@ -148,10 +148,18 @@ public class ProductService {
     }
 
     // menghapus product berdasarkan id
-    public void deleteProduct(Long id) {
+    public String deleteProduct(Long id) {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
+        
+        // Simpan nama produk sebelum dihapus
+        String deletedProductName = existingProduct.getName();
+        
+        // Eksekusi hapus
         productRepository.delete(existingProduct);
+        
+        // Kembalikan nama produk untuk pesan notifikasi
+        return deletedProductName;
     }
 
     //  HELPER V1: MENGUBAH ENTITY MENJADI RESPONSE BESERTA VARIAN-NYA!
