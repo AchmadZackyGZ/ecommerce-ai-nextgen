@@ -59,7 +59,7 @@ public class ProductController {
         
         ApiResponse<List<ProductResponse>> response = ApiResponse.<List<ProductResponse>>builder()
                 .status(HttpStatus.OK.value()) // Angka 200
-                .message("Berhasil mengambil semua data produk")
+                .message("Berhasil mengambil semua data produk di Database")
                 .data(allData)
                 .build();
 
