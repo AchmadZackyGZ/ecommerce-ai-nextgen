@@ -91,6 +91,12 @@ export default function ProductDetail() {
         quantity: quantity,
       });
 
+      window.dispatchEvent(
+        new CustomEvent("cartUpdated", {
+          detail: { addedQuantity: quantity },
+        }),
+      );
+
       toast.success(
         `Berhasil menambahkan ${product.name} (${selectedVariant.variantName}) ke keranjang!`,
       );

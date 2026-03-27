@@ -26,10 +26,6 @@ export default function TopNavbar() {
 
   // Fungsi menembak API untuk menghitung total kuantitas
   const fetchCartCount = async () => {
-    if (!user) {
-      setCartCount(0);
-      return;
-    }
     try {
       const response = await apiClient.get("/cart");
       const items = response.data.data.items || [];
@@ -40,14 +36,25 @@ export default function TopNavbar() {
       setCartCount(total);
     } catch (error) {
       console.error("Gagal menarik data item dari keranjang:", error);
+      setCartCount(0);
     }
   };
 
   useEffect(() => {
     fetchCartCount(); // panggil function cartCount saat pertama kali dimuat halaman
 
-    window.addEventListener("cartUpdated", fetchCartCount); // tambahkan event listener
-    return () => window.removeEventListener("cartUpdated", fetchCartCount); // hapus event listener
+    const handleCartUpdate = (e: any) => {
+      if (e.detail && e.detail.addedQuantity) {
+        // Jika ada sinyal masuk, langsung tambah angkanya secara instan (0 detik!)
+        setCartCount((prev) => prev + e.detail.addedQuantity);
+      } else {
+        // Fallback untuk aksi lain (misal dari keranjang)
+        fetchCartCount();
+      }
+    };
+
+    window.addEventListener("cartUpdated", handleCartUpdate); // tambahkan event listener
+    return () => window.removeEventListener("cartUpdated", handleCartUpdate); // hapus event listener
   }, [user]);
 
   // Fungsi cerdas pembuat Inisial (Misal: "Achmad Ghoutsu" -> "AG", "Budi" -> "BU")
