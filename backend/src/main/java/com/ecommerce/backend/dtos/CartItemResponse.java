@@ -10,6 +10,7 @@ public class CartItemResponse {
     private Long id;
     private Long variantId;
     private String productName;
+    private String imageUrl;
     private BigDecimal price;
     private Integer quantity;
     private BigDecimal subTotal; // Hasil kali price * quantity

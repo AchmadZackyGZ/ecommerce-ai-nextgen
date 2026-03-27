@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
+import { apiClient } from "~/services/apiClient";
 import {
   ShoppingCart,
   User,
@@ -11,22 +12,43 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { useCartStore } from "~/store/cartStore";
 import { useAuthStore } from "~/store/authStore";
 
 export default function TopNavbar() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const cartItems = useCartStore((state) => state.items);
-  const totalCartItems = cartItems.reduce(
-    (total, item) => total + item.quantity,
-    0,
-  );
 
   // 🧠 STATE UNTUK BUG FIXES
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // State khusus untuk tap di Mobile
+  const [cartCount, setCartCount] = useState(0); // state untuk cart count
+
+  // Fungsi menembak API untuk menghitung total kuantitas
+  const fetchCartCount = async () => {
+    if (!user) {
+      setCartCount(0);
+      return;
+    }
+    try {
+      const response = await apiClient.get("/cart");
+      const items = response.data.data.items || [];
+      const total = items.reduce(
+        (sum: number, item: any) => sum + item.quantity,
+        0,
+      );
+      setCartCount(total);
+    } catch (error) {
+      console.error("Gagal menarik data item dari keranjang:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCartCount(); // panggil function cartCount saat pertama kali dimuat halaman
+
+    window.addEventListener("cartUpdated", fetchCartCount); // tambahkan event listener
+    return () => window.removeEventListener("cartUpdated", fetchCartCount); // hapus event listener
+  }, [user]);
 
   // Fungsi cerdas pembuat Inisial (Misal: "Achmad Ghoutsu" -> "AG", "Budi" -> "BU")
   const getInitial = (name: string) => {
@@ -105,9 +127,9 @@ export default function TopNavbar() {
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition-all hover:bg-white/10 hover:text-white"
             >
               <ShoppingCart size={22} />
-              {totalCartItems > 0 && (
+              {cartCount > 0 && (
                 <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg animate-in zoom-in">
-                  {totalCartItems}
+                  {cartCount}
                 </span>
               )}
             </Link>
