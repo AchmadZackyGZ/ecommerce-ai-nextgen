@@ -114,6 +114,7 @@ public class CartService {
                         .price(finalPrice)
                         .quantity(item.getQuantity())
                         .subTotal(finalPrice.multiply(new BigDecimal(item.getQuantity())))
+                        .imageUrl(item.getVariant().getProduct().getImageUrl())
                         .build();
                 }).collect(Collectors.toList());
 
