@@ -12,6 +12,7 @@ import {
   X,
   PlusCircle,
   AlertCircle,
+  Building,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
@@ -42,14 +43,25 @@ export default function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState("reguler");
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
 
+  // 🏦 State Bank Midtrans
+  const [selectedBank, setSelectedBank] = useState("");
+
   // 🧮 Kalkulasi Biaya
   const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
   const protectionFee = 1000;
-  // Kalkulasi Diskon Otomatis
   const discountAmount = selectedVoucher ? selectedVoucher.discountValue : 0;
-
   const grandTotal =
     totalProductPrice + shippingCost + protectionFee - discountAmount;
+
+  // Daftar Bank Midtrans Virtual Account
+  const bankOptions = [
+    { id: "bca", name: "BCA Virtual Account", color: "bg-blue-600" },
+    { id: "mandiri", name: "Mandiri Virtual Account", color: "bg-yellow-500" },
+    { id: "bni", name: "BNI Virtual Account", color: "bg-orange-500" },
+    { id: "bri", name: "BRI Virtual Account", color: "bg-blue-800" },
+    { id: "permata", name: "Permata Virtual Account", color: "bg-emerald-600" },
+    { id: "cimb", name: "CIMB Niaga Virtual Account", color: "bg-red-600" },
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,30 +86,22 @@ export default function CheckoutPage() {
           setAddresses(addressList);
 
           if (addressList.length > 0) {
-            // Pilih alamat utama otomatis
             const primary =
               addressList.find((a: any) => a.isPrimary) || addressList[0];
             setSelectedAddress(primary);
           }
         } catch (addrError) {
-          console.warn("Belum ada alamat atau endpoint belum siap.", addrError);
           setAddresses([]);
         }
 
         // 3. Tarik Data Voucher (GET /api/vouchers)
         try {
-          // Sesuaikan endpoint ini dengan backend Anda
           const voucherRes = await apiClient.get("/vouchers");
           setVouchers(voucherRes.data.data || []);
         } catch (voucherError) {
-          console.warn(
-            "Belum ada voucher atau endpoint belum siap.",
-            voucherError,
-          );
           setVouchers([]);
         }
       } catch (error) {
-        console.error("Gagal menarik data checkout", error);
         toast.error("Terjadi kesalahan sistem.");
       } finally {
         setIsLoading(false);
@@ -113,13 +117,20 @@ export default function CheckoutPage() {
       );
     }
 
+    // 🔥 VALIDASI: Pastikan Bank dipilih jika metode transfer bank
+    if (paymentMethod === "bank_transfer" && !selectedBank) {
+      return toast.error(
+        "Silakan pilih Bank tujuan untuk pembayaran Virtual Account.",
+      );
+    }
+
     toast.success("Mempersiapkan Gateway Pembayaran...");
-    // Nanti menembak POST /api/orders/checkout
     console.log({
       addressId: selectedAddress.id,
       note: sellerNote,
       shipping: shippingMethod,
       payment: paymentMethod,
+      bank: paymentMethod === "bank_transfer" ? selectedBank : null, // Kirim bank jika transfer
       voucherId: selectedVoucher?.id,
       total: grandTotal,
     });
@@ -160,7 +171,10 @@ export default function CheckoutPage() {
                   <MapPin size={20} /> Alamat Pengiriman
                 </div>
                 {selectedAddress && (
-                  <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+                  <button
+                    onClick={() => navigate("/tambah-alamat")}
+                    className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+                  >
                     Ubah Alamat
                   </button>
                 )}
@@ -196,7 +210,6 @@ export default function CheckoutPage() {
                     Silakan tambahkan alamat pengiriman untuk melanjutkan
                     pesanan.
                   </p>
-                  {/* 🔥 ROUTING KE HALAMAN TAMBAH ALAMAT */}
                   <button
                     onClick={() => navigate("/tambah-alamat")}
                     className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
@@ -305,7 +318,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 🎫 4. NEXIA VOUCHER (UI Interaktif) */}
+            {/* 🎫 4. NEXIA VOUCHER */}
             <div
               onClick={() => setIsVoucherModalOpen(true)}
               className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex items-center justify-between cursor-pointer group transition-all hover:border-cyan-500/50 hover:bg-white/5"
@@ -335,7 +348,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* 💳 5. METODE PEMBAYARAN */}
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
+            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex flex-col transition-all duration-300">
               <div className="flex items-center gap-2 text-white font-bold mb-4">
                 <CreditCard size={20} className="text-orange-400" /> Metode
                 Pembayaran
@@ -364,7 +377,7 @@ export default function CheckoutPage() {
                       Transfer Bank / VA
                     </span>
                     <span className="text-xs text-zinc-500">
-                      Dicek otomatis (Powered by Midtrans)
+                      Dicek otomatis (Midtrans)
                     </span>
                   </div>
                 </label>
@@ -377,7 +390,10 @@ export default function CheckoutPage() {
                     value="cod"
                     className="sr-only"
                     checked={paymentMethod === "cod"}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value);
+                      setSelectedBank("");
+                    }}
                   />
                   <div
                     className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-cyan-400" : "border-zinc-500"}`}
@@ -396,6 +412,48 @@ export default function CheckoutPage() {
                   </div>
                 </label>
               </div>
+
+              {/* 🔥 DROPDOWN BANK MIDTRANS (Muncul Jika Transfer Bank Dipilih) */}
+              {paymentMethod === "bank_transfer" && (
+                <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <span className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2">
+                    <Building size={16} /> Pilih Bank (Virtual Account)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {bankOptions.map((bank) => (
+                      <label
+                        key={bank.id}
+                        className={`relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${selectedBank === bank.id ? "border-cyan-400 bg-cyan-500/10" : "border-white/5 bg-black/20 hover:border-white/20"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="bank"
+                          value={bank.id}
+                          className="sr-only"
+                          checked={selectedBank === bank.id}
+                          onChange={(e) => setSelectedBank(e.target.value)}
+                        />
+
+                        {/* Fake Bank Logo Badge */}
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bank.color} text-[10px] font-black text-white shadow-md`}
+                        >
+                          {bank.id.toUpperCase()}
+                        </div>
+
+                        <span className="font-bold text-white text-xs">
+                          {bank.name}
+                        </span>
+
+                        {/* Active Indicator Indicator */}
+                        {selectedBank === bank.id && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -406,7 +464,6 @@ export default function CheckoutPage() {
                 Ringkasan Belanja
               </h3>
 
-              {/* Rincian Harga Bersih */}
               <div className="flex flex-col gap-3 text-sm text-zinc-400">
                 <div className="flex justify-between">
                   <span>Subtotal Produk</span>
@@ -461,11 +518,10 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA DINAMIS */}
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header Modal */}
             <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
               <h3 className="text-xl font-black text-white flex items-center gap-2">
                 <Ticket className="text-yellow-400" /> Pilih Voucher
@@ -478,7 +534,6 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Input Manual */}
             <div className="p-6 pb-2 border-b border-white/5">
               <div className="flex gap-2">
                 <input
@@ -492,7 +547,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 🔥 LIST VOUCHER DARI API (Dengan penanganan kosong) */}
             <div className="p-6 flex flex-col gap-4 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
               {vouchers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -544,7 +598,6 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Footer Modal (Action Buttons) */}
             <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
               <button
                 onClick={() => {
