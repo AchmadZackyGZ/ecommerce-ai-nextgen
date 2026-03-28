@@ -32,7 +32,8 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // 🎫 State Voucher
+  // 🎫 State Voucher (Terkoneksi API)
+  const [vouchers, setVouchers] = useState<any[]>([]);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
@@ -44,7 +45,7 @@ export default function CheckoutPage() {
   // 🧮 Kalkulasi Biaya
   const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
   const protectionFee = 1000;
-  // Contoh Kalkulasi Diskon (Jika ada voucher)
+  // Kalkulasi Diskon Otomatis
   const discountAmount = selectedVoucher ? selectedVoucher.discountValue : 0;
 
   const grandTotal =
@@ -73,7 +74,7 @@ export default function CheckoutPage() {
           setAddresses(addressList);
 
           if (addressList.length > 0) {
-            // Pilih alamat utama, jika tidak ada, pilih yang pertama
+            // Pilih alamat utama otomatis
             const primary =
               addressList.find((a: any) => a.isPrimary) || addressList[0];
             setSelectedAddress(primary);
@@ -81,6 +82,19 @@ export default function CheckoutPage() {
         } catch (addrError) {
           console.warn("Belum ada alamat atau endpoint belum siap.", addrError);
           setAddresses([]);
+        }
+
+        // 3. Tarik Data Voucher (GET /api/vouchers)
+        try {
+          // Sesuaikan endpoint ini dengan backend Anda
+          const voucherRes = await apiClient.get("/vouchers");
+          setVouchers(voucherRes.data.data || []);
+        } catch (voucherError) {
+          console.warn(
+            "Belum ada voucher atau endpoint belum siap.",
+            voucherError,
+          );
+          setVouchers([]);
         }
       } catch (error) {
         console.error("Gagal menarik data checkout", error);
@@ -110,22 +124,6 @@ export default function CheckoutPage() {
       total: grandTotal,
     });
   };
-
-  // 🎫 Dummy Data Voucher untuk Pop-up
-  const dummyVouchers = [
-    {
-      id: 1,
-      name: "Diskon Nexia 10%",
-      description: "Potongan harga produk 10% s.d Rp 50.000",
-      discountValue: 50000,
-    },
-    {
-      id: 2,
-      name: "Gratis Ongkir XTRA",
-      description: "Potongan ongkos kirim s.d Rp 20.000",
-      discountValue: 20000,
-    },
-  ];
 
   if (isLoading) {
     return (
@@ -198,7 +196,11 @@ export default function CheckoutPage() {
                     Silakan tambahkan alamat pengiriman untuk melanjutkan
                     pesanan.
                   </p>
-                  <button className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors">
+                  {/* 🔥 ROUTING KE HALAMAN TAMBAH ALAMAT */}
+                  <button
+                    onClick={() => navigate("/tambah-alamat")}
+                    className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                  >
                     <PlusCircle size={18} /> Tambah Alamat Baru
                   </button>
                 </div>
@@ -303,7 +305,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 🎫 4. NEXIA VOUCHER (Dipindah ke kiri, UI Interaktif) */}
+            {/* 🎫 4. NEXIA VOUCHER (UI Interaktif) */}
             <div
               onClick={() => setIsVoucherModalOpen(true)}
               className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex items-center justify-between cursor-pointer group transition-all hover:border-cyan-500/50 hover:bg-white/5"
@@ -397,7 +399,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* 💸 AREA KANAN: ORDER SUMMARY (Sticky Ringkasan Belanja yang Bersih) */}
+          {/* 💸 AREA KANAN: ORDER SUMMARY */}
           <div className="w-full lg:w-1/3 xl:w-1/4">
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur-2xl shadow-2xl">
               <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4">
@@ -459,7 +461,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA */}
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA DINAMIS */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -490,35 +492,56 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* List Voucher Tersedia */}
+            {/* 🔥 LIST VOUCHER DARI API (Dengan penanganan kosong) */}
             <div className="p-6 flex flex-col gap-4 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-              {dummyVouchers.map((voucher) => (
-                <label
-                  key={voucher.id}
-                  className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${selectedVoucher?.id === voucher.id ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
-                >
-                  <input
-                    type="radio"
-                    name="voucher"
-                    className="sr-only"
-                    checked={selectedVoucher?.id === voucher.id}
-                    onChange={() => setSelectedVoucher(voucher)}
-                  />
-                  <div
-                    className={`h-5 w-5 rounded-full border-2 flex shrink-0 items-center justify-center ${selectedVoucher?.id === voucher.id ? "border-cyan-400" : "border-zinc-500"}`}
+              {vouchers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <Ticket size={40} className="text-zinc-700 mb-3" />
+                  <p className="text-white font-bold mb-1">
+                    Voucher Anda Tidak Ada
+                  </p>
+                  <p className="text-sm text-zinc-400 mb-4">
+                    Tambahkan atau klaim voucher agar belanja makin hemat!
+                  </p>
+                  <Link
+                    to="/voucher"
+                    className="text-cyan-400 text-sm font-bold hover:underline transition-all"
+                    onClick={() => setIsVoucherModalOpen(false)}
                   >
-                    {selectedVoucher?.id === voucher.id && (
-                      <div className="h-2.5 w-2.5 rounded-full bg-cyan-400"></div>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-white">{voucher.name}</span>
-                    <span className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                      {voucher.description}
-                    </span>
-                  </div>
-                </label>
-              ))}
+                    Cari Voucher Sekarang &rarr;
+                  </Link>
+                </div>
+              ) : (
+                vouchers.map((voucher) => (
+                  <label
+                    key={voucher.id}
+                    className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${selectedVoucher?.id === voucher.id ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="voucher"
+                      className="sr-only"
+                      checked={selectedVoucher?.id === voucher.id}
+                      onChange={() => setSelectedVoucher(voucher)}
+                    />
+                    <div
+                      className={`h-5 w-5 rounded-full border-2 flex shrink-0 items-center justify-center ${selectedVoucher?.id === voucher.id ? "border-cyan-400" : "border-zinc-500"}`}
+                    >
+                      {selectedVoucher?.id === voucher.id && (
+                        <div className="h-2.5 w-2.5 rounded-full bg-cyan-400"></div>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white">
+                        {voucher.name}
+                      </span>
+                      <span className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                        {voucher.description}
+                      </span>
+                    </div>
+                  </label>
+                ))
+              )}
             </div>
 
             {/* Footer Modal (Action Buttons) */}
