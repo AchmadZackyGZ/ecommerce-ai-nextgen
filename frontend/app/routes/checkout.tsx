@@ -1,422 +1,543 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   MapPin,
+  Package,
   Truck,
-  Ticket,
-  Sparkles,
   CreditCard,
+  Ticket,
+  ChevronRight,
+  MessageSquare,
   ShieldCheck,
-  Cpu,
   X,
-  Lock,
-  CheckCircle2,
-  Percent,
+  PlusCircle,
+  AlertCircle,
 } from "lucide-react";
-import { useCartStore } from "~/store/cartStore";
-import { toast } from "sonner";
 import { generateMeta } from "~/utils/seo";
+import { toast } from "sonner";
+import { apiClient } from "~/services/apiClient";
 
 export const meta = () =>
   generateMeta("Checkout", "Selesaikan pembayaran pesanan Nexia Anda.");
 
-const SHIPPING_OPTIONS = [
-  { id: "reg", name: "Reguler (2-3 Hari)", price: 15000 },
-  { id: "eco", name: "Hemat Kargo (4-7 Hari)", price: 8000 },
-  { id: "inst", name: "Nexia Instant (1 hari)", price: 45000 },
-];
-
-// 🔥 DATA DUMMY DOMPET VOUCHER CUSTOMER
-const CUSTOMER_VOUCHERS = [
-  {
-    id: "v1",
-    title: "Diskon Nexia AI Optimal",
-    discount: 50000,
-    minPurchase: 500000,
-    type: "Platform",
-  },
-  {
-    id: "v2",
-    title: "Gratis Ongkir Super",
-    discount: 20000,
-    minPurchase: 100000,
-    type: "Shipping",
-  },
-  {
-    id: "v3",
-    title: "Diskon Khusus Sultan",
-    discount: 1000000,
-    minPurchase: 50000000,
-    type: "Platform",
-  }, // Sengaja dibuat Min Purchase tinggi agar ter-disabled!
-];
-
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const cartItems = useCartStore((state) => state.items);
-  const checkoutItems = cartItems.filter((item) => item.selected);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [selectedShipping, setSelectedShipping] = useState(SHIPPING_OPTIONS[0]);
-  const [voucherDiscount, setVoucherDiscount] = useState(0);
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  // 🛒 State Keranjang
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [totalProductPrice, setTotalProductPrice] = useState(0);
 
-  // 🔥 STATE MODAL MANUAL VOUCHER
+  // 📍 State Alamat (Terkoneksi API)
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+
+  // 🎫 State Voucher
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+
+  // 📝 State Form Checkout
+  const [sellerNote, setSellerNote] = useState("");
+  const [shippingMethod, setShippingMethod] = useState("reguler");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+
+  // 🧮 Kalkulasi Biaya
+  const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
+  const protectionFee = 1000;
+  // Contoh Kalkulasi Diskon (Jika ada voucher)
+  const discountAmount = selectedVoucher ? selectedVoucher.discountValue : 0;
+
+  const grandTotal =
+    totalProductPrice + shippingCost + protectionFee - discountAmount;
 
   useEffect(() => {
-    if (checkoutItems.length === 0) {
-      toast.error("Pilih setidaknya 1 barang untuk di-checkout!");
-      navigate("/cart");
-    }
-  }, [checkoutItems, navigate]);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // 1. Tarik Data Keranjang
+        const cartRes = await apiClient.get("/cart");
+        const cartData = cartRes.data.data;
 
-  const subtotalProduk = checkoutItems.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0,
-  );
-  const ongkosKirim = selectedShipping.price;
-  const totalPembayaran = subtotalProduk + ongkosKirim - voucherDiscount;
+        if (!cartData.items || cartData.items.length === 0) {
+          toast.error("Keranjang kosong. Silakan belanja dulu.");
+          return navigate("/cart");
+        }
 
-  const handleAiVoucher = () => {
-    setIsAiThinking(true);
-    setTimeout(() => {
-      setVoucherDiscount(50000);
-      setIsAiThinking(false);
-      toast.success(
-        "Nexia AI berhasil menerapkan diskon optimal Rp 50.000 untuk Anda!",
+        setCartItems(cartData.items);
+        setTotalProductPrice(cartData.totalPrice);
+
+        // 2. Tarik Data Alamat (GET /api/addresses)
+        try {
+          const addressRes = await apiClient.get("/addresses");
+          const addressList = addressRes.data.data || [];
+          setAddresses(addressList);
+
+          if (addressList.length > 0) {
+            // Pilih alamat utama, jika tidak ada, pilih yang pertama
+            const primary =
+              addressList.find((a: any) => a.isPrimary) || addressList[0];
+            setSelectedAddress(primary);
+          }
+        } catch (addrError) {
+          console.warn("Belum ada alamat atau endpoint belum siap.", addrError);
+          setAddresses([]);
+        }
+      } catch (error) {
+        console.error("Gagal menarik data checkout", error);
+        toast.error("Terjadi kesalahan sistem.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [navigate]);
+
+  const handlePlaceOrder = () => {
+    if (!selectedAddress) {
+      return toast.error(
+        "Silakan tambahkan alamat pengiriman terlebih dahulu!",
       );
-    }, 1500);
+    }
+
+    toast.success("Mempersiapkan Gateway Pembayaran...");
+    // Nanti menembak POST /api/orders/checkout
+    console.log({
+      addressId: selectedAddress.id,
+      note: sellerNote,
+      shipping: shippingMethod,
+      payment: paymentMethod,
+      voucherId: selectedVoucher?.id,
+      total: grandTotal,
+    });
   };
 
-  // 🔥 FUNGSI PILIH VOUCHER MANUAL
-  const handleManualVoucherSelect = (discount: number) => {
-    setVoucherDiscount(discount);
-    setIsVoucherModalOpen(false);
-    toast.success(`Voucher berhasil diterapkan!`);
-  };
+  // 🎫 Dummy Data Voucher untuk Pop-up
+  const dummyVouchers = [
+    {
+      id: 1,
+      name: "Diskon Nexia 10%",
+      description: "Potongan harga produk 10% s.d Rp 50.000",
+      discountValue: 50000,
+    },
+    {
+      id: 2,
+      name: "Gratis Ongkir XTRA",
+      description: "Potongan ongkos kirim s.d Rp 20.000",
+      discountValue: 20000,
+    },
+  ];
 
-  const handlePayment = () => {
-    setIsProcessingPayment(true);
-    toast.loading("Menghubungkan ke Nexia Secure Gateway (Midtrans)...");
-    setTimeout(() => {
-      setIsProcessingPayment(false);
-      toast.dismiss();
-      toast.success("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
-    }, 2500);
-  };
+  if (isLoading) {
+    return (
+      <main className="min-h-screen pb-40 pt-40 flex justify-center items-center">
+        <span className="text-cyan-400 font-bold animate-pulse tracking-widest uppercase">
+          Menyiapkan Checkout...
+        </span>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen pb-40 pt-28 relative">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
         <h1 className="mb-8 text-3xl font-black text-white md:text-4xl">
-          Checkout Pembayaran
+          Checkout Pesanan
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* KOLOM KIRI: ALAMAT & DAFTAR PESANAN */}
+          {/* 📝 AREA KIRI: FORM & DATA UTAMA */}
           <div className="flex-1 flex flex-col gap-6">
-            {/* Alamat Pengiriman */}
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-purple-500 to-cyan-400"></div>
+            {/* 📍 1. ALAMAT PENGIRIMAN (DYNAMIC API) */}
+            <div
+              className={`relative overflow-hidden rounded-3xl border p-6 backdrop-blur-xl transition-all ${!selectedAddress ? "border-red-500/50 bg-red-500/5" : "border-white/10 bg-zinc-900/30 group hover:border-cyan-500/30"}`}
+            >
+              {selectedAddress && (
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-600"></div>
+              )}
+
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-cyan-400">
-                  <MapPin size={20} />
-                  <h2 className="text-lg font-bold text-white">
-                    Alamat Pengiriman
-                  </h2>
+                <div
+                  className={`flex items-center gap-2 font-bold ${!selectedAddress ? "text-red-400" : "text-cyan-400"}`}
+                >
+                  <MapPin size={20} /> Alamat Pengiriman
                 </div>
-                <button className="text-sm font-semibold text-cyan-400 hover:text-cyan-300">
-                  Ubah
-                </button>
+                {selectedAddress && (
+                  <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+                    Ubah Alamat
+                  </button>
+                )}
               </div>
-              <div className="flex flex-col md:flex-row gap-2 md:gap-4 text-sm text-zinc-300">
-                <div className="font-bold text-white whitespace-nowrap">
-                  Achmad Zacky Ghoutsu Zamani <br />{" "}
-                  <span className="text-zinc-500 font-normal">
-                    (+62) 812 3456 7890
+
+              {selectedAddress ? (
+                <div className="flex flex-col gap-1 pl-7">
+                  <span className="font-bold text-white text-lg">
+                    {selectedAddress.recipientName}{" "}
+                    <span className="text-sm font-normal text-zinc-400">
+                      ({selectedAddress.phoneNumber})
+                    </span>
                   </span>
-                </div>
-                <div className="md:border-l md:border-white/10 md:pl-4">
-                  Jl. Panglima Sudirman No. 123, Perumahan Graha Bunder Asri,
-                  Gresik, Jawa Timur, 61111. (Rumah cat putih pagar hitam).
-                </div>
-              </div>
-            </div>
-
-            {/* Daftar Produk & Kurir */}
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
-              <div className="flex items-center gap-3 border-b border-white/5 pb-4 mb-4">
-                <ShieldCheck size={20} className="text-emerald-400" />
-                <h2 className="text-lg font-bold text-white">Pesanan Anda</h2>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                {checkoutItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <h3 className="line-clamp-1 text-sm font-bold text-white">
-                        {item.name}
-                      </h3>
-                      <span className="text-xs text-zinc-500">
-                        Kuantitas: {item.quantity}
-                      </span>
-                    </div>
-                    <div className="text-sm font-bold text-cyan-400">
-                      Rp {(item.price * item.quantity).toLocaleString("id-ID")}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 border-t border-white/5 pt-6">
-                <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-                  <Truck size={16} /> Opsi Pengiriman
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {SHIPPING_OPTIONS.map((shipping) => (
-                    <button
-                      key={shipping.id}
-                      onClick={() => setSelectedShipping(shipping)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${selectedShipping.id === shipping.id ? "border-cyan-400 bg-cyan-500/10 shadow-inner" : "border-white/10 bg-black/20 hover:border-white/30"}`}
-                    >
-                      <span
-                        className={`text-sm font-bold ${selectedShipping.id === shipping.id ? "text-white" : "text-zinc-300"}`}
-                      >
-                        {shipping.name}
-                      </span>
-                      <span className="text-xs font-medium text-cyan-400 mt-1">
-                        Rp {shipping.price.toLocaleString("id-ID")}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* KOLOM KANAN: THE DISCOUNT ENGINE & PAYMENT TOTAL */}
-          <div className="w-full lg:w-1/3 flex flex-col gap-6">
-            {/* THE AI VOUCHER ENGINE */}
-            <div className="rounded-3xl border border-cyan-500/30 bg-cyan-950/20 p-6 backdrop-blur-xl relative overflow-hidden">
-              <div className="mb-4 flex items-center gap-2 text-cyan-400">
-                <Ticket size={20} />
-                <h2 className="text-lg font-bold text-white">
-                  Voucher & Diskon
-                </h2>
-              </div>
-
-              {voucherDiscount === 0 ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex rounded-xl overflow-hidden border border-white/10 bg-black/30">
-                    <input
-                      type="text"
-                      placeholder="Masukkan kode voucher"
-                      className="w-full bg-transparent px-4 py-3 text-sm text-white outline-none"
-                    />
-                    <button className="bg-white/10 px-4 text-sm font-bold text-white hover:bg-white/20 transition-colors">
-                      Pakai
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-4 my-2">
-                    <div className="h-px flex-1 bg-white/10"></div>
-                    <span className="text-xs text-zinc-500 font-bold">
-                      ATAU
+                  <span className="text-zinc-400 text-sm leading-relaxed">
+                    {selectedAddress.fullAddress}
+                    <br />
+                    {selectedAddress.district}, {selectedAddress.city},{" "}
+                    {selectedAddress.province} {selectedAddress.postalCode}
+                  </span>
+                  {selectedAddress.isPrimary && (
+                    <span className="mt-2 w-max rounded-md bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/20">
+                      Utama
                     </span>
-                    <div className="h-px flex-1 bg-white/10"></div>
-                  </div>
-
-                  <button
-                    onClick={handleAiVoucher}
-                    disabled={isAiThinking}
-                    className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 py-3.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-70 overflow-hidden"
-                  >
-                    {isAiThinking ? (
-                      <Cpu className="animate-pulse" size={18} />
-                    ) : (
-                      <Sparkles
-                        size={18}
-                        className="transition-transform group-hover:rotate-12"
-                      />
-                    )}
-                    <span className="relative z-10">
-                      {isAiThinking
-                        ? "Menganalisis Data Anda..."
-                        : "Auto-Apply AI Voucher"}
-                    </span>
-                    {isAiThinking && (
-                      <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                    )}
-                  </button>
-
-                  {/* 🔥 NEW BUTTON: OPSI PEMILIHAN MANUAL */}
-                  <button
-                    onClick={() => setIsVoucherModalOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 py-3.5 text-sm font-bold text-zinc-300 transition-all hover:bg-white/5 hover:text-white active:scale-95"
-                  >
-                    Pilih Voucher Tersimpan
-                  </button>
+                  )}
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-emerald-400 flex items-center gap-1">
-                      <Sparkles size={14} /> Voucher Terpasang
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      Potongan Rp {voucherDiscount.toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setVoucherDiscount(0)}
-                    className="text-xs font-bold text-zinc-500 hover:text-red-400"
-                  >
-                    Batalkan
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <AlertCircle size={32} className="text-red-500 mb-3" />
+                  <h3 className="text-white font-bold mb-1">
+                    Anda Belum Memiliki Alamat
+                  </h3>
+                  <p className="text-sm text-zinc-400 mb-4">
+                    Silakan tambahkan alamat pengiriman untuk melanjutkan
+                    pesanan.
+                  </p>
+                  <button className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors">
+                    <PlusCircle size={18} /> Tambah Alamat Baru
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Rincian Pembayaran */}
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur-2xl shadow-2xl">
-              <h2 className="text-lg font-bold text-white border-b border-white/10 pb-4 flex items-center gap-2">
-                <CreditCard size={20} className="text-purple-400" /> Rincian
+            {/* 📦 2. DAFTAR PRODUK & PESAN */}
+            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-white font-bold mb-6 border-b border-white/10 pb-4">
+                <Package size={20} className="text-purple-400" /> Produk Dipesan
+              </div>
+
+              <div className="flex flex-col gap-6">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex gap-4 items-start">
+                    <div className="h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.productName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-zinc-800 to-zinc-900"></div>
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col">
+                      <h3 className="text-sm font-bold text-white line-clamp-2">
+                        {item.productName}
+                      </h3>
+                      <span className="text-xs text-zinc-500 mt-1">
+                        Kuantitas: {item.quantity}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-cyan-400">
+                        Rp{" "}
+                        {(item.price * item.quantity).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Input Pesan */}
+              <div className="mt-6 pt-4 border-t border-white/5 flex items-center gap-4">
+                <MessageSquare size={18} className="text-zinc-500" />
+                <input
+                  type="text"
+                  value={sellerNote}
+                  onChange={(e) => setSellerNote(e.target.value)}
+                  placeholder="Pesan untuk penjual (Opsional)..."
+                  className="flex-1 bg-transparent border-b border-white/10 pb-2 text-sm text-white focus:outline-none focus:border-cyan-400 transition-colors placeholder:text-zinc-600"
+                />
+              </div>
+            </div>
+
+            {/* 🚚 3. OPSI PENGIRIMAN */}
+            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-white font-bold mb-4">
+                <Truck size={20} className="text-emerald-400" /> Opsi Pengiriman
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label
+                  className={`relative flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition-all ${shippingMethod === "reguler" ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                >
+                  <input
+                    type="radio"
+                    name="shipping"
+                    value="reguler"
+                    className="sr-only"
+                    checked={shippingMethod === "reguler"}
+                    onChange={(e) => setShippingMethod(e.target.value)}
+                  />
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-white">Reguler</span>
+                    <span className="font-bold text-cyan-400">Rp 15.000</span>
+                  </div>
+                  <span className="text-xs text-zinc-400">
+                    Estimasi tiba 2-4 hari kerja.
+                  </span>
+                </label>
+                <label
+                  className={`relative flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition-all ${shippingMethod === "kargo" ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                >
+                  <input
+                    type="radio"
+                    name="shipping"
+                    value="kargo"
+                    className="sr-only"
+                    checked={shippingMethod === "kargo"}
+                    onChange={(e) => setShippingMethod(e.target.value)}
+                  />
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-white">Kargo (Hemat)</span>
+                    <span className="font-bold text-cyan-400">Rp 35.000</span>
+                  </div>
+                  <span className="text-xs text-zinc-400">
+                    Untuk barang di atas 5kg. Estimasi 5-7 hari.
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* 🎫 4. NEXIA VOUCHER (Dipindah ke kiri, UI Interaktif) */}
+            <div
+              onClick={() => setIsVoucherModalOpen(true)}
+              className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex items-center justify-between cursor-pointer group transition-all hover:border-cyan-500/50 hover:bg-white/5"
+            >
+              <div className="flex items-center gap-3">
+                <Ticket
+                  size={24}
+                  className="text-yellow-400 transition-transform group-hover:scale-110"
+                />
+                <span className="font-bold text-white">Nexia Voucher</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedVoucher ? (
+                  <span className="text-sm font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
+                    - Rp {selectedVoucher.discountValue.toLocaleString("id-ID")}
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-zinc-400 group-hover:text-white transition-colors">
+                    Pilih atau Masukkan Voucher
+                  </span>
+                )}
+                <ChevronRight
+                  size={20}
+                  className="text-zinc-500 group-hover:text-cyan-400 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* 💳 5. METODE PEMBAYARAN */}
+            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-white font-bold mb-4">
+                <CreditCard size={20} className="text-orange-400" /> Metode
                 Pembayaran
-              </h2>
-              <div className="flex flex-col gap-3 py-4 text-sm text-zinc-400">
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label
+                  className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === "bank_transfer" ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    value="bank_transfer"
+                    className="sr-only"
+                    checked={paymentMethod === "bank_transfer"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  />
+                  <div
+                    className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "bank_transfer" ? "border-cyan-400" : "border-zinc-500"}`}
+                  >
+                    {paymentMethod === "bank_transfer" && (
+                      <div className="h-2 w-2 rounded-full bg-cyan-400"></div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-white text-sm">
+                      Transfer Bank / VA
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      Dicek otomatis (Powered by Midtrans)
+                    </span>
+                  </div>
+                </label>
+                <label
+                  className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === "cod" ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    value="cod"
+                    className="sr-only"
+                    checked={paymentMethod === "cod"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  />
+                  <div
+                    className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-cyan-400" : "border-zinc-500"}`}
+                  >
+                    {paymentMethod === "cod" && (
+                      <div className="h-2 w-2 rounded-full bg-cyan-400"></div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-white text-sm">
+                      Cash on Delivery (COD)
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      Bayar saat barang sampai
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* 💸 AREA KANAN: ORDER SUMMARY (Sticky Ringkasan Belanja yang Bersih) */}
+          <div className="w-full lg:w-1/3 xl:w-1/4">
+            <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur-2xl shadow-2xl">
+              <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4">
+                Ringkasan Belanja
+              </h3>
+
+              {/* Rincian Harga Bersih */}
+              <div className="flex flex-col gap-3 text-sm text-zinc-400">
                 <div className="flex justify-between">
                   <span>Subtotal Produk</span>
                   <span className="font-semibold text-white">
-                    Rp {subtotalProduk.toLocaleString("id-ID")}
+                    Rp {totalProductPrice.toLocaleString("id-ID")}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Subtotal Pengiriman</span>
                   <span className="font-semibold text-white">
-                    Rp {ongkosKirim.toLocaleString("id-ID")}
+                    Rp {shippingCost.toLocaleString("id-ID")}
                   </span>
                 </div>
-                {voucherDiscount > 0 && (
-                  <div className="flex justify-between animate-in slide-in-from-right-4">
-                    <span className="text-emerald-400">
-                      Total Diskon Voucher
-                    </span>
-                    <span className="font-bold text-emerald-400">
-                      - Rp {voucherDiscount.toLocaleString("id-ID")}
+                <div className="flex justify-between">
+                  <span>Biaya Proteksi</span>
+                  <span className="font-semibold text-white">
+                    Rp {protectionFee.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                {selectedVoucher && (
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Diskon Voucher</span>
+                    <span className="font-semibold">
+                      - Rp {discountAmount.toLocaleString("id-ID")}
                     </span>
                   </div>
                 )}
               </div>
+
               <div className="border-t border-white/10 pt-4 flex flex-col gap-1">
                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                   Total Pembayaran
                 </span>
-                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 transition-all duration-500">
-                  Rp {Math.max(0, totalPembayaran).toLocaleString("id-ID")}
+                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+                  Rp {grandTotal.toLocaleString("id-ID")}
                 </span>
               </div>
+
               <button
-                onClick={handlePayment}
-                disabled={isProcessingPayment}
-                className="mt-6 w-full rounded-2xl bg-white py-4 font-black text-black transition-all hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-2"
+                onClick={handlePlaceOrder}
+                disabled={!selectedAddress}
+                className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
               >
-                {isProcessingPayment ? (
-                  <Cpu size={20} className="animate-spin text-zinc-500" />
-                ) : (
-                  <ShieldCheck size={20} />
-                )}
-                {isProcessingPayment
-                  ? "Memproses Gateway..."
-                  : "Buat Pesanan & Bayar"}
+                Buat Pesanan
               </button>
+
+              <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 mt-2">
+                <ShieldCheck size={12} /> Pembayaran aman dan terenkripsi.
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 🔮 NEW MODAL: PILIH VOUCHER MANUAL */}
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA */}
       {isVoucherModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setIsVoucherModalOpen(false)}
-          ></div>
-
-          <div className="relative w-full max-w-lg flex flex-col max-h-[80vh] overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-between border-b border-white/10 bg-black/20 p-5">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Ticket className="text-cyan-400" size={20} /> Voucher Tersimpan
-              </h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <Ticket className="text-yellow-400" /> Pilih Voucher
+              </h3>
               <button
                 onClick={() => setIsVoucherModalOpen(false)}
-                className="text-zinc-400 hover:text-white"
+                className="text-zinc-500 hover:text-white transition-colors"
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-              {CUSTOMER_VOUCHERS.map((v) => {
-                const isEligible = subtotalProduk >= v.minPurchase; // Validasi kelayakan
+            {/* Input Manual */}
+            <div className="p-6 pb-2 border-b border-white/5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Masukkan Kode Voucher..."
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600 uppercase"
+                />
+                <button className="rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-black hover:bg-cyan-400 transition-colors">
+                  Terapkan
+                </button>
+              </div>
+            </div>
 
-                return (
+            {/* List Voucher Tersedia */}
+            <div className="p-6 flex flex-col gap-4 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+              {dummyVouchers.map((voucher) => (
+                <label
+                  key={voucher.id}
+                  className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${selectedVoucher?.id === voucher.id ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                >
+                  <input
+                    type="radio"
+                    name="voucher"
+                    className="sr-only"
+                    checked={selectedVoucher?.id === voucher.id}
+                    onChange={() => setSelectedVoucher(voucher)}
+                  />
                   <div
-                    key={v.id}
-                    className={`flex items-center justify-between rounded-2xl border p-4 transition-all ${isEligible ? "border-white/10 bg-zinc-800/50 hover:border-cyan-500/50" : "border-red-500/10 bg-red-950/10 opacity-70"}`}
+                    className={`h-5 w-5 rounded-full border-2 flex shrink-0 items-center justify-center ${selectedVoucher?.id === voucher.id ? "border-cyan-400" : "border-zinc-500"}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-full ${isEligible ? "bg-cyan-500/20 text-cyan-400" : "bg-red-500/20 text-red-400"}`}
-                      >
-                        {isEligible ? (
-                          <Percent size={20} />
-                        ) : (
-                          <Lock size={20} />
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <h4
-                          className={`text-sm font-bold ${isEligible ? "text-white" : "text-zinc-500 line-through decoration-red-500/50"}`}
-                        >
-                          {v.title}
-                        </h4>
-                        <span className="text-xs text-zinc-400 mt-1">
-                          Min. Belanja Rp{" "}
-                          {v.minPurchase.toLocaleString("id-ID")}
-                        </span>
-                        {!isEligible && (
-                          <span className="text-[10px] font-bold text-red-400 mt-1">
-                            Belanjaan Anda kurang Rp{" "}
-                            {(v.minPurchase - subtotalProduk).toLocaleString(
-                              "id-ID",
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {isEligible ? (
-                      <button
-                        onClick={() => handleManualVoucherSelect(v.discount)}
-                        className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-400 hover:bg-cyan-500 hover:text-white transition-colors"
-                      >
-                        Pilih
-                      </button>
-                    ) : (
-                      <div className="text-xs font-bold text-zinc-600 px-4">
-                        Tidak Berlaku
-                      </div>
+                    {selectedVoucher?.id === voucher.id && (
+                      <div className="h-2.5 w-2.5 rounded-full bg-cyan-400"></div>
                     )}
                   </div>
-                );
-              })}
+                  <div className="flex flex-col">
+                    <span className="font-bold text-white">{voucher.name}</span>
+                    <span className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                      {voucher.description}
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Footer Modal (Action Buttons) */}
+            <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setSelectedVoucher(null);
+                  setIsVoucherModalOpen(false);
+                }}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Hapus Pilihan
+              </button>
+              <button
+                onClick={() => setIsVoucherModalOpen(false)}
+                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+              >
+                Selesai
+              </button>
             </div>
           </div>
         </div>
