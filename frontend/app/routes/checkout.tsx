@@ -29,11 +29,11 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [totalProductPrice, setTotalProductPrice] = useState(0);
 
-  // 📍 State Alamat (Terkoneksi API)
+  // 📍 State Alamat
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // 🎫 State Voucher (Terkoneksi API)
+  // 🎫 State Voucher
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
@@ -53,21 +53,50 @@ export default function CheckoutPage() {
   const grandTotal =
     totalProductPrice + shippingCost + protectionFee - discountAmount;
 
-  // Daftar Bank Midtrans Virtual Account
+  // 🔥 DAFTAR BANK DENGAN URL LOGO RESMI (SVG)
   const bankOptions = [
-    { id: "bca", name: "BCA Virtual Account", color: "bg-blue-600" },
-    { id: "mandiri", name: "Mandiri Virtual Account", color: "bg-yellow-500" },
-    { id: "bni", name: "BNI Virtual Account", color: "bg-orange-500" },
-    { id: "bri", name: "BRI Virtual Account", color: "bg-blue-800" },
-    { id: "permata", name: "Permata Virtual Account", color: "bg-emerald-600" },
-    { id: "cimb", name: "CIMB Niaga Virtual Account", color: "bg-red-600" },
+    {
+      id: "bca",
+      name: "BCA Virtual Account",
+      logoUrl:
+        "https://upload.wikimedia.org/wikipedia/commons/5/5c/Bank_Central_Asia.svg",
+    },
+    {
+      id: "mandiri",
+      name: "Mandiri Virtual Account",
+      logoUrl:
+        "https://commons.wikimedia.org/wiki/Special:FilePath/Bank_Mandiri_logo_2016.svg",
+    },
+    {
+      id: "bni",
+      name: "BNI Virtual Account",
+      logoUrl:
+        "https://commons.wikimedia.org/wiki/Special:FilePath/Bank_Negara_Indonesia_logo_(2004).svg",
+    },
+    {
+      id: "bri",
+      name: "BRI Virtual Account",
+      logoUrl:
+        "https://upload.wikimedia.org/wikipedia/commons/2/2e/BRI_2020.svg",
+    },
+    {
+      id: "permata",
+      name: "Permata Virtual Account",
+      logoUrl:
+        "https://commons.wikimedia.org/wiki/Special:FilePath/Permata_Bank_(2024).svg",
+    },
+    {
+      id: "cimb",
+      name: "CIMB Niaga Virtual Account",
+      logoUrl:
+        "https://upload.wikimedia.org/wikipedia/commons/e/e0/CIMB_Niaga_logo.svg",
+    },
   ];
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        // 1. Tarik Data Keranjang
         const cartRes = await apiClient.get("/cart");
         const cartData = cartRes.data.data;
 
@@ -79,7 +108,6 @@ export default function CheckoutPage() {
         setCartItems(cartData.items);
         setTotalProductPrice(cartData.totalPrice);
 
-        // 2. Tarik Data Alamat (GET /api/addresses)
         try {
           const addressRes = await apiClient.get("/addresses");
           const addressList = addressRes.data.data || [];
@@ -94,7 +122,6 @@ export default function CheckoutPage() {
           setAddresses([]);
         }
 
-        // 3. Tarik Data Voucher (GET /api/vouchers)
         try {
           const voucherRes = await apiClient.get("/vouchers");
           setVouchers(voucherRes.data.data || []);
@@ -117,7 +144,6 @@ export default function CheckoutPage() {
       );
     }
 
-    // 🔥 VALIDASI: Pastikan Bank dipilih jika metode transfer bank
     if (paymentMethod === "bank_transfer" && !selectedBank) {
       return toast.error(
         "Silakan pilih Bank tujuan untuk pembayaran Virtual Account.",
@@ -130,7 +156,7 @@ export default function CheckoutPage() {
       note: sellerNote,
       shipping: shippingMethod,
       payment: paymentMethod,
-      bank: paymentMethod === "bank_transfer" ? selectedBank : null, // Kirim bank jika transfer
+      bank: paymentMethod === "bank_transfer" ? selectedBank : null,
       voucherId: selectedVoucher?.id,
       total: grandTotal,
     });
@@ -156,7 +182,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* 📝 AREA KIRI: FORM & DATA UTAMA */}
           <div className="flex-1 flex flex-col gap-6">
-            {/* 📍 1. ALAMAT PENGIRIMAN (DYNAMIC API) */}
+            {/* 📍 1. ALAMAT PENGIRIMAN */}
             <div
               className={`relative overflow-hidden rounded-3xl border p-6 backdrop-blur-xl transition-all ${!selectedAddress ? "border-red-500/50 bg-red-500/5" : "border-white/10 bg-zinc-900/30 group hover:border-cyan-500/30"}`}
             >
@@ -413,7 +439,7 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              {/* 🔥 DROPDOWN BANK MIDTRANS (Muncul Jika Transfer Bank Dipilih) */}
+              {/* 🔥 DROPDOWN BANK MIDTRANS DENGAN LOGO ASLI */}
               {paymentMethod === "bank_transfer" && (
                 <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-4 duration-300">
                   <span className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2">
@@ -434,18 +460,20 @@ export default function CheckoutPage() {
                           onChange={(e) => setSelectedBank(e.target.value)}
                         />
 
-                        {/* Fake Bank Logo Badge */}
-                        <div
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bank.color} text-[10px] font-black text-white shadow-md`}
-                        >
-                          {bank.id.toUpperCase()}
+                        {/* 🏦 Real Bank Logo Badge (Dengan bantalan warna putih) */}
+                        <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-white px-1.5 py-1 shadow-md">
+                          <img
+                            src={bank.logoUrl}
+                            alt={bank.id}
+                            className="h-full w-full object-contain"
+                          />
                         </div>
 
-                        <span className="font-bold text-white text-xs">
+                        <span className="font-bold text-white text-xs leading-tight">
                           {bank.name}
                         </span>
 
-                        {/* Active Indicator Indicator */}
+                        {/* Active Indicator */}
                         {selectedBank === bank.id && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
                         )}
