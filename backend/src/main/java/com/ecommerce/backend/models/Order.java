@@ -50,6 +50,18 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime orderDate;
 
+    private String shippingMethod; // Cth: "reguler", "kargo"
+    
+    private String paymentMethod; // Cth: "bank_transfer", "cod"
+    
+    private String paymentBank; // Cth: "bca", "mandiri" (Bisa null jika COD)
+    
+    @Column(columnDefinition = "TEXT")
+    private String sellerNote; // Pesan opsional untuk penjual
+
+    // KUNCI UTAMA MIDTRANS: Menyimpan Token Pop-up Pembayaran!
+    private String snapToken;
+
     // 🔥 VOUCHER TRACKING: Mencatat voucher apa yang dipakai di transaksi ini (Boleh Null jika tidak pakai)
     @ManyToOne // Banyak order bisa menggunakan satu voucher yang sama
     @JoinColumn(name = "voucher_id")
