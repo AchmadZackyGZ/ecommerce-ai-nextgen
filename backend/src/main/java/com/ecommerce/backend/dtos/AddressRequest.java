@@ -4,8 +4,14 @@ import lombok.Data;
 
 @Data
 public class AddressRequest {
-    private String fullAddress;
+    private String recipientName;
+    private String phoneNumber;
+    private String province;
     private String city;
+    private String district;
     private String postalCode;
-    private boolean isPrimary; // Apakah user ingin ini jadi alamat utama?
+    private String streetDetails;
+    private String otherDetails;
+    private String label;
+    private boolean isPrimary;
 }

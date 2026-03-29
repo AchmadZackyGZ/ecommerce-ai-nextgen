@@ -13,6 +13,7 @@ import {
   PlusCircle,
   AlertCircle,
   Building,
+  Check,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
@@ -33,6 +34,11 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
+  // 🔥 STATE BARU UNTUK MODAL ALAMAT
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("Rumah"); // State untuk tombol Rumah/Kantor
+  const [isPrimaryAddress, setIsPrimaryAddress] = useState(false);
+
   // 🎫 State Voucher
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
@@ -42,18 +48,14 @@ export default function CheckoutPage() {
   const [sellerNote, setSellerNote] = useState("");
   const [shippingMethod, setShippingMethod] = useState("reguler");
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
-
-  // 🏦 State Bank Midtrans
   const [selectedBank, setSelectedBank] = useState("");
 
-  // 🧮 Kalkulasi Biaya
   const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
   const protectionFee = 1000;
   const discountAmount = selectedVoucher ? selectedVoucher.discountValue : 0;
   const grandTotal =
     totalProductPrice + shippingCost + protectionFee - discountAmount;
 
-  // 🔥 DAFTAR BANK DENGAN URL LOGO RESMI (SVG)
   const bankOptions = [
     {
       id: "bca",
@@ -89,7 +91,7 @@ export default function CheckoutPage() {
       id: "cimb",
       name: "CIMB Niaga Virtual Account",
       logoUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/3/38/CIMB_Niaga_logo.svg",
+        "https://commons.wikimedia.org/wiki/Special:FilePath/CIMB_Niaga_logo.svg",
     },
   ];
 
@@ -151,15 +153,6 @@ export default function CheckoutPage() {
     }
 
     toast.success("Mempersiapkan Gateway Pembayaran...");
-    console.log({
-      addressId: selectedAddress.id,
-      note: sellerNote,
-      shipping: shippingMethod,
-      payment: paymentMethod,
-      bank: paymentMethod === "bank_transfer" ? selectedBank : null,
-      voucherId: selectedVoucher?.id,
-      total: grandTotal,
-    });
   };
 
   if (isLoading) {
@@ -180,7 +173,7 @@ export default function CheckoutPage() {
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* 📝 AREA KIRI: FORM & DATA UTAMA */}
+          {/* 📝 AREA KIRI */}
           <div className="flex-1 flex flex-col gap-6">
             {/* 📍 1. ALAMAT PENGIRIMAN */}
             <div
@@ -198,7 +191,8 @@ export default function CheckoutPage() {
                 </div>
                 {selectedAddress && (
                   <button
-                    onClick={() => navigate("/tambah-alamat")}
+                    // 🔥 UBAH FUNGSI TOMBOL MENJADI BUKA MODAL
+                    onClick={() => setIsAddressModalOpen(true)}
                     className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
                   >
                     Ubah Alamat
@@ -215,7 +209,7 @@ export default function CheckoutPage() {
                     </span>
                   </span>
                   <span className="text-zinc-400 text-sm leading-relaxed">
-                    {selectedAddress.fullAddress}
+                    {selectedAddress.streetDetails}
                     <br />
                     {selectedAddress.district}, {selectedAddress.city},{" "}
                     {selectedAddress.province} {selectedAddress.postalCode}
@@ -237,7 +231,8 @@ export default function CheckoutPage() {
                     pesanan.
                   </p>
                   <button
-                    onClick={() => navigate("/tambah-alamat")}
+                    // 🔥 UBAH FUNGSI TOMBOL MENJADI BUKA MODAL
+                    onClick={() => setIsAddressModalOpen(true)}
                     className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                   >
                     <PlusCircle size={18} /> Tambah Alamat Baru
@@ -251,7 +246,6 @@ export default function CheckoutPage() {
               <div className="flex items-center gap-2 text-white font-bold mb-6 border-b border-white/10 pb-4">
                 <Package size={20} className="text-purple-400" /> Produk Dipesan
               </div>
-
               <div className="flex flex-col gap-6">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4 items-start">
@@ -283,8 +277,6 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Input Pesan */}
               <div className="mt-6 pt-4 border-t border-white/5 flex items-center gap-4">
                 <MessageSquare size={18} className="text-zinc-500" />
                 <input
@@ -439,7 +431,6 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              {/* 🔥 DROPDOWN BANK MIDTRANS DENGAN LOGO ASLI */}
               {paymentMethod === "bank_transfer" && (
                 <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-4 duration-300">
                   <span className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2">
@@ -459,8 +450,6 @@ export default function CheckoutPage() {
                           checked={selectedBank === bank.id}
                           onChange={(e) => setSelectedBank(e.target.value)}
                         />
-
-                        {/* 🏦 Real Bank Logo Badge (Dengan bantalan warna putih) */}
                         <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-white px-1.5 py-1 shadow-md">
                           <img
                             src={bank.logoUrl}
@@ -468,12 +457,9 @@ export default function CheckoutPage() {
                             className="h-full w-full object-contain"
                           />
                         </div>
-
                         <span className="font-bold text-white text-xs leading-tight">
                           {bank.name}
                         </span>
-
-                        {/* Active Indicator */}
                         {selectedBank === bank.id && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
                         )}
@@ -491,7 +477,6 @@ export default function CheckoutPage() {
               <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4">
                 Ringkasan Belanja
               </h3>
-
               <div className="flex flex-col gap-3 text-sm text-zinc-400">
                 <div className="flex justify-between">
                   <span>Subtotal Produk</span>
@@ -520,7 +505,6 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </div>
-
               <div className="border-t border-white/10 pt-4 flex flex-col gap-1">
                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                   Total Pembayaran
@@ -529,7 +513,6 @@ export default function CheckoutPage() {
                   Rp {grandTotal.toLocaleString("id-ID")}
                 </span>
               </div>
-
               <button
                 onClick={handlePlaceOrder}
                 disabled={!selectedAddress}
@@ -537,7 +520,6 @@ export default function CheckoutPage() {
               >
                 Buat Pesanan
               </button>
-
               <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 mt-2">
                 <ShieldCheck size={12} /> Pembayaran aman dan terenkripsi.
               </div>
@@ -546,7 +528,115 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA */}
+      {/* 📍 MODAL POP-UP TAMBAH ALAMAT BARU */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
+              <h3 className="text-xl font-black text-white">Alamat Baru</h3>
+              <button
+                onClick={() => setIsAddressModalOpen(false)}
+                className="text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Nama Lengkap"
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <input
+                  type="tel"
+                  placeholder="Nomor Telepon"
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Provinsi, Kota, Kecamatan, Kode Pos"
+                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+              />
+              <input
+                type="text"
+                placeholder="Nama Jalan, Gedung, No. Rumah"
+                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+              />
+              <input
+                type="text"
+                placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan)"
+                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+              />
+
+              <div className="mt-2 flex flex-col gap-3">
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                  Tandai Sebagai:
+                </span>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setAddressLabel("Rumah")}
+                    className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Rumah" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
+                  >
+                    Rumah
+                  </button>
+                  <button
+                    onClick={() => setAddressLabel("Kantor")}
+                    className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Kantor" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
+                  >
+                    Kantor
+                  </button>
+                </div>
+              </div>
+
+              <label className="mt-4 flex cursor-pointer items-center gap-3">
+                <div
+                  className={`flex h-5 w-5 items-center justify-center rounded border ${isPrimaryAddress ? "border-cyan-400 bg-cyan-400" : "border-zinc-600"}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={isPrimaryAddress}
+                    onChange={(e) => setIsPrimaryAddress(e.target.checked)}
+                  />
+                  {isPrimaryAddress && (
+                    <Check size={14} className="text-black font-bold" />
+                  )}
+                </div>
+                <span className="text-sm font-medium text-zinc-300">
+                  Atur sebagai alamat utama
+                </span>
+              </label>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
+              <button
+                onClick={() => setIsAddressModalOpen(false)}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Nanti Saja
+              </button>
+              <button
+                // Nanti disini dipanggil fungsi submit ke backend
+                onClick={() => {
+                  toast.success("Alamat akan disimpan ke database nanti!");
+                  setIsAddressModalOpen(false);
+                }}
+                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+              >
+                Simpan Alamat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (KODE TETAP SAMA SEPERTI SEBELUMNYA) */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -561,7 +651,6 @@ export default function CheckoutPage() {
                 <X size={24} />
               </button>
             </div>
-
             <div className="p-6 pb-2 border-b border-white/5">
               <div className="flex gap-2">
                 <input
@@ -574,7 +663,6 @@ export default function CheckoutPage() {
                 </button>
               </div>
             </div>
-
             <div className="p-6 flex flex-col gap-4 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
               {vouchers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -625,7 +713,6 @@ export default function CheckoutPage() {
                 ))
               )}
             </div>
-
             <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
               <button
                 onClick={() => {
