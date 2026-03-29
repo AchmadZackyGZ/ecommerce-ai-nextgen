@@ -18,5 +18,9 @@ public class OrderResponse {
     private String status;
     private LocalDateTime orderDate;
     private String voucherCodeUsed; // Null jika tidak pakai
+    // 🔥 TAMBAHAN BARU: Balikan data Midtrans ke React
+    private String paymentMethod;
+    private String paymentBank;
+    private String snapToken; // React sangat membutuhkan token ini!
     private List<OrderItemResponse> items;
 }
