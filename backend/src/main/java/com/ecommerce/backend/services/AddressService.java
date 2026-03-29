@@ -50,9 +50,15 @@ public class AddressService {
 
         Address newAddress = Address.builder()
                 .user(user)
-                .fullAddress(request.getFullAddress())
+                .recipientName(request.getRecipientName())
+                .phoneNumber(request.getPhoneNumber())
+                .province(request.getProvince())
                 .city(request.getCity())
+                .district(request.getDistrict())
                 .postalCode(request.getPostalCode())
+                .streetDetails(request.getStreetDetails())
+                .otherDetails(request.getOtherDetails())
+                .label(request.getLabel())
                 .isPrimary(setAsPrimary)
                 .build();
 
@@ -89,9 +95,15 @@ public class AddressService {
     private AddressResponse mapToResponse(Address address) {
         return AddressResponse.builder()
                 .id(address.getId())
-                .fullAddress(address.getFullAddress())
+                .recipientName(address.getRecipientName())
+                .phoneNumber(address.getPhoneNumber())
+                .province(address.getProvince())
                 .city(address.getCity())
+                .district(address.getDistrict())
                 .postalCode(address.getPostalCode())
+                .streetDetails(address.getStreetDetails())
+                .otherDetails(address.getOtherDetails())
+                .label(address.getLabel())
                 .isPrimary(address.isPrimary())
                 .build();
     }
