@@ -89,7 +89,7 @@ export default function CheckoutPage() {
       id: "cimb",
       name: "CIMB Niaga Virtual Account",
       logoUrl:
-        "https://upload.wikimedia.org/wikipedia/commons/e/e0/CIMB_Niaga_logo.svg",
+        "https://upload.wikimedia.org/wikipedia/commons/3/38/CIMB_Niaga_logo.svg",
     },
   ];
 
