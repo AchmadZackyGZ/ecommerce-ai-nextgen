@@ -45,4 +45,18 @@ public class Address {
 
     @Column(nullable = false)
     private boolean isPrimary; // Menandai alamat utama
+
+    // 🔥 FIX ERROR: FUNGSI PERAKIT ALAMAT OTOMATIS (Computed Property)
+    // Dengan fungsi ini, OrderService dan OrderTools tidak akan error lagi!
+    public String getFullAddress() {
+        String baseAddress = streetDetails;
+        
+        // Jika ada patokan / other details, tambahkan di dalam kurung
+        if (otherDetails != null && !otherDetails.trim().isEmpty()) {
+            baseAddress += " (" + otherDetails + ")";
+        }
+        
+        // Rakit menjadi format: Jalan (Patokan), Kecamatan, Kota, Provinsi KodePos
+        return baseAddress + ", " + district + ", " + city + ", " + province + " " + postalCode;
+    }
 }

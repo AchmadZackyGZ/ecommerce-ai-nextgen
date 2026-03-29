@@ -30,14 +30,25 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [totalProductPrice, setTotalProductPrice] = useState(0);
 
-  // 📍 State Alamat
+  // 📍 State Alamat Utama
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // 🔥 STATE BARU UNTUK MODAL ALAMAT
+  // 🔥 STATE FORM MODAL ALAMAT (Sesuai dengan AddressRequest.java di Backend)
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [addressLabel, setAddressLabel] = useState("Rumah"); // State untuk tombol Rumah/Kantor
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("Rumah");
   const [isPrimaryAddress, setIsPrimaryAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    recipientName: "",
+    phoneNumber: "",
+    province: "",
+    city: "",
+    district: "",
+    postalCode: "",
+    streetDetails: "",
+    otherDetails: "",
+  });
 
   // 🎫 State Voucher
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -95,49 +106,101 @@ export default function CheckoutPage() {
     },
   ];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const cartRes = await apiClient.get("/cart");
-        const cartData = cartRes.data.data;
+  // 🔄 FUNGSI MENGAMBIL DATA AWAL
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const cartRes = await apiClient.get("/cart");
+      const cartData = cartRes.data.data;
 
-        if (!cartData.items || cartData.items.length === 0) {
-          toast.error("Keranjang kosong. Silakan belanja dulu.");
-          return navigate("/cart");
-        }
-
-        setCartItems(cartData.items);
-        setTotalProductPrice(cartData.totalPrice);
-
-        try {
-          const addressRes = await apiClient.get("/addresses");
-          const addressList = addressRes.data.data || [];
-          setAddresses(addressList);
-
-          if (addressList.length > 0) {
-            const primary =
-              addressList.find((a: any) => a.isPrimary) || addressList[0];
-            setSelectedAddress(primary);
-          }
-        } catch (addrError) {
-          setAddresses([]);
-        }
-
-        try {
-          const voucherRes = await apiClient.get("/vouchers");
-          setVouchers(voucherRes.data.data || []);
-        } catch (voucherError) {
-          setVouchers([]);
-        }
-      } catch (error) {
-        toast.error("Terjadi kesalahan sistem.");
-      } finally {
-        setIsLoading(false);
+      if (!cartData.items || cartData.items.length === 0) {
+        toast.error("Keranjang kosong. Silakan belanja dulu.");
+        return navigate("/cart");
       }
-    };
+
+      setCartItems(cartData.items);
+      setTotalProductPrice(cartData.totalPrice);
+
+      try {
+        const addressRes = await apiClient.get("/addresses");
+        const addressList = addressRes.data.data || [];
+        setAddresses(addressList);
+
+        if (addressList.length > 0) {
+          const primary =
+            addressList.find((a: any) => a.isPrimary) || addressList[0];
+          setSelectedAddress(primary);
+        }
+      } catch (addrError) {
+        setAddresses([]);
+      }
+
+      try {
+        const voucherRes = await apiClient.get("/vouchers");
+        setVouchers(voucherRes.data.data || []);
+      } catch (voucherError) {
+        setVouchers([]);
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [navigate]);
+
+  // 🚀 FUNGSI MENYIMPAN ALAMAT KE BACKEND
+  const handleSaveAddress = async () => {
+    // Validasi sederhana
+    if (
+      !newAddress.recipientName ||
+      !newAddress.phoneNumber ||
+      !newAddress.province ||
+      !newAddress.city ||
+      !newAddress.district ||
+      !newAddress.streetDetails
+    ) {
+      return toast.error("Harap isi semua kolom wajib!");
+    }
+
+    try {
+      setIsSavingAddress(true);
+
+      // Gabungkan data form dengan label dan isPrimary
+      const payload = {
+        ...newAddress,
+        label: addressLabel,
+        isPrimary: isPrimaryAddress,
+      };
+
+      const res = await apiClient.post("/addresses", payload);
+      toast.success(res.data.message || "Alamat berhasil ditambahkan!");
+
+      // Tutup modal dan bersihkan form
+      setIsAddressModalOpen(false);
+      setNewAddress({
+        recipientName: "",
+        phoneNumber: "",
+        province: "",
+        city: "",
+        district: "",
+        postalCode: "",
+        streetDetails: "",
+        otherDetails: "",
+      });
+      setIsPrimaryAddress(false);
+
+      // Tarik ulang data dari backend agar UI terupdate dan alamat baru otomatis terpilih
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Gagal menyimpan alamat.");
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   const handlePlaceOrder = () => {
     if (!selectedAddress) {
@@ -191,7 +254,6 @@ export default function CheckoutPage() {
                 </div>
                 {selectedAddress && (
                   <button
-                    // 🔥 UBAH FUNGSI TOMBOL MENJADI BUKA MODAL
                     onClick={() => setIsAddressModalOpen(true)}
                     className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
                   >
@@ -208,17 +270,24 @@ export default function CheckoutPage() {
                       ({selectedAddress.phoneNumber})
                     </span>
                   </span>
-                  <span className="text-zinc-400 text-sm leading-relaxed">
-                    {selectedAddress.streetDetails}
+                  <span className="text-zinc-400 text-sm leading-relaxed mt-1">
+                    {selectedAddress.streetDetails}{" "}
+                    {selectedAddress.otherDetails &&
+                      `(${selectedAddress.otherDetails})`}
                     <br />
                     {selectedAddress.district}, {selectedAddress.city},{" "}
                     {selectedAddress.province} {selectedAddress.postalCode}
                   </span>
-                  {selectedAddress.isPrimary && (
-                    <span className="mt-2 w-max rounded-md bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/20">
-                      Utama
+                  <div className="flex gap-2 mt-2">
+                    <span className="w-max rounded-md bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
+                      {selectedAddress.label}
                     </span>
-                  )}
+                    {selectedAddress.isPrimary && (
+                      <span className="w-max rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+                        Utama
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -231,7 +300,6 @@ export default function CheckoutPage() {
                     pesanan.
                   </p>
                   <button
-                    // 🔥 UBAH FUNGSI TOMBOL MENJADI BUKA MODAL
                     onClick={() => setIsAddressModalOpen(true)}
                     className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                   >
@@ -543,33 +611,94 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Form Body */}
+            {/* Form Body - Terhubung dengan State */}
             <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="text"
                   placeholder="Nama Lengkap"
+                  value={newAddress.recipientName}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      recipientName: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
                 />
                 <input
                   type="tel"
                   placeholder="Nomor Telepon"
+                  value={newAddress.phoneNumber}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      phoneNumber: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
                 />
               </div>
-              <input
-                type="text"
-                placeholder="Provinsi, Kota, Kecamatan, Kode Pos"
-                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-              />
+
+              {/* Grid 4 Kolom untuk Wilayah */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <input
+                  type="text"
+                  placeholder="Provinsi"
+                  value={newAddress.province}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, province: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Kota/Kab"
+                  value={newAddress.city}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, city: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Kecamatan"
+                  value={newAddress.district}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, district: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Kode Pos"
+                  value={newAddress.postalCode}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, postalCode: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+              </div>
+
               <input
                 type="text"
                 placeholder="Nama Jalan, Gedung, No. Rumah"
+                value={newAddress.streetDetails}
+                onChange={(e) =>
+                  setNewAddress({
+                    ...newAddress,
+                    streetDetails: e.target.value,
+                  })
+                }
                 className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
               />
               <input
                 type="text"
-                placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan)"
+                placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan) - Opsional"
+                value={newAddress.otherDetails}
+                onChange={(e) =>
+                  setNewAddress({ ...newAddress, otherDetails: e.target.value })
+                }
                 className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
               />
 
@@ -593,7 +722,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <label className="mt-4 flex cursor-pointer items-center gap-3">
+              <label className="mt-4 flex cursor-pointer items-center gap-3 w-max">
                 <div
                   className={`flex h-5 w-5 items-center justify-center rounded border ${isPrimaryAddress ? "border-cyan-400 bg-cyan-400" : "border-zinc-600"}`}
                 >
@@ -607,7 +736,7 @@ export default function CheckoutPage() {
                     <Check size={14} className="text-black font-bold" />
                   )}
                 </div>
-                <span className="text-sm font-medium text-zinc-300">
+                <span className="text-sm font-medium text-zinc-300 select-none">
                   Atur sebagai alamat utama
                 </span>
               </label>
@@ -617,26 +746,24 @@ export default function CheckoutPage() {
             <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
               <button
                 onClick={() => setIsAddressModalOpen(false)}
-                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                disabled={isSavingAddress}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
               >
-                Nanti Saja
+                Batal
               </button>
               <button
-                // Nanti disini dipanggil fungsi submit ke backend
-                onClick={() => {
-                  toast.success("Alamat akan disimpan ke database nanti!");
-                  setIsAddressModalOpen(false);
-                }}
-                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                onClick={handleSaveAddress}
+                disabled={isSavingAddress}
+                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)] disabled:opacity-50 disabled:animate-pulse"
               >
-                Simpan Alamat
+                {isSavingAddress ? "Menyimpan..." : "Simpan Alamat"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (KODE TETAP SAMA SEPERTI SEBELUMNYA) */}
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (Tetap sama) */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
