@@ -7,6 +7,7 @@ import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 import com.ecommerce.backend.models.*;
 import com.ecommerce.backend.repositories.*;
+import com.midtrans.httpclient.SnapApi; // 🔥 IMPORT CORE MIDTRANS
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,7 +33,6 @@ public class OrderService {
     @Autowired private ProductVariantRepository productVariantRepository;
     @Autowired private AddressRepository addressRepository;
 
-    // Artinya: Jika di tengah jalan gagal (misal stok habis), semua perubahan ditarik mundur (Rollback)!
     @Transactional
     public OrderResponse checkout(OrderRequest request, String userEmail) {
         
@@ -52,7 +54,6 @@ public class OrderService {
         // 2. Hitung SubTotal Murni (Harga Asli Barang x Kuantitas)
         BigDecimal subTotal = cartItems.stream()
                 .map(item -> {
-                    // Harga dinamis: Harga Dasar Produk + Harga Tambahan Varian
                   BigDecimal finalPrice = item.getVariant().getProduct().getPrice().add(item.getVariant().getPriceModifier());
                     return finalPrice.multiply(new BigDecimal(item.getQuantity()));
                 })
@@ -66,50 +67,47 @@ public class OrderService {
             validVoucher = voucherRepository.findByCode(request.getVoucherCode().toUpperCase())
                     .orElseThrow(() -> new BadRequestException("Kode voucher tidak valid!"));
 
-            // Validasi: Apakah sudah expired?
             if (validVoucher.getExpiredAt().isBefore(LocalDateTime.now())) {
                 throw new BadRequestException("Voucher sudah kadaluarsa!");
             }
-            // Validasi: Apakah kuota masih ada?
             if (validVoucher.getQuota() <= 0) {
                 throw new BadRequestException("Kuota voucher sudah habis!");
             }
 
-            // 🔥 RUMUS PERSENTASE: (SubTotal * Persen) / 100
             BigDecimal percentageDecimal = new BigDecimal(validVoucher.getDiscountPercentage());
             BigDecimal calculatedDiscount = subTotal.multiply(percentageDecimal)
                     .divide(new BigDecimal(100), RoundingMode.HALF_UP);
 
-            // 🔥 LOGIKA SHOPEE: Bandingkan dengan Maksimal Potongan!
-            // Jika calculatedDiscount LEBIH BESAR dari maxDiscountAmount, paksa turun ke maxDiscountAmount
             if (calculatedDiscount.compareTo(validVoucher.getMaxDiscountAmount()) > 0) {
                 discount = validVoucher.getMaxDiscountAmount();
             } else {
                 discount = calculatedDiscount;
             }
 
-            // Potong kuota voucher (Karena sudah berhasil dipakai)
             validVoucher.setQuota(validVoucher.getQuota() - 1);
             voucherRepository.save(validVoucher);
         }
 
         // 4. Hitung Grand Total (Yang wajib dibayar)
         BigDecimal grandTotal = subTotal.subtract(discount);
-        
-        // Pencegahan ekstra aman (Grand Total tidak boleh minus)
         if (grandTotal.compareTo(BigDecimal.ZERO) < 0) {
             grandTotal = BigDecimal.ZERO;
         }
 
+       // 🔥 5. BUAT DRAF PESANAN (Menambahkan data metode pembayaran & pengiriman dari Frontend)
        Order order = Order.builder()
                 .user(user)
-                .shippingAddress(shippingAddress) // Simpan Entitas Address
+                .shippingAddress(shippingAddress) 
                 .subTotal(subTotal)
                 .discount(discount)
                 .grandTotal(grandTotal)
                 .status(OrderStatus.PENDING)
                 .orderDate(LocalDateTime.now())
                 .voucher(validVoucher)
+                .shippingMethod(request.getShippingMethod()) // BARU
+                .paymentMethod(request.getPaymentMethod())   // BARU
+                .paymentBank(request.getPaymentBank())       // BARU
+                .sellerNote(request.getSellerNote())         // BARU
                 .build();
         Order savedOrder = orderRepository.save(order);
 
@@ -118,14 +116,13 @@ public class OrderService {
             if (variant.getStock() < cartItem.getQuantity()) {
                 throw new BadRequestException("Gagal Checkout! Stok produk '" + variant.getProduct().getName() + "' tidak mencukupi.");
             }
-            // 🔥 Potong stok dari Varian
             variant.setStock(variant.getStock() - cartItem.getQuantity());
             productVariantRepository.save(variant);
 
             BigDecimal finalPrice = variant.getProduct().getPrice().add(variant.getPriceModifier());
             return OrderItem.builder()
                     .order(savedOrder)
-                    .variant(variant) //  Simpan Varian di OrderItem
+                    .variant(variant) 
                     .quantity(cartItem.getQuantity())
                     .price(finalPrice)
                     .build();
@@ -135,19 +132,48 @@ public class OrderService {
         cartItemRepository.deleteAll(cartItems);
         cart.getCartItems().clear();
 
+        // 🚀 6. THE MAGIC MOMENT: PANGGIL MIDTRANS JIKA BUKAN COD! 🚀
+        if (request.getPaymentMethod() != null && request.getPaymentMethod().equalsIgnoreCase("bank_transfer")) {
+            try {
+                // Siapkan Map/JSON untuk dikirim ke Midtrans
+                Map<String, Object> params = new HashMap<>();
+
+                // Detail Transaksi
+                Map<String, String> transactionDetails = new HashMap<>();
+                transactionDetails.put("order_id", "NEXIA-" + savedOrder.getId());
+                transactionDetails.put("gross_amount", savedOrder.getGrandTotal().longValue() + "");
+
+                // Detail Customer
+                Map<String, String> customerDetails = new HashMap<>();
+                customerDetails.put("first_name", user.getName());
+                customerDetails.put("email", user.getEmail());
+                customerDetails.put("phone", shippingAddress.getPhoneNumber());
+
+                params.put("transaction_details", transactionDetails);
+                params.put("customer_details", customerDetails);
+
+                // Tembak API Midtrans untuk mendapatkan Snap Token!
+                String snapToken = SnapApi.createTransactionToken(params);
+                
+                // Simpan token ke database
+                savedOrder.setSnapToken(snapToken);
+                orderRepository.save(savedOrder);
+                
+            } catch (Exception e) {
+                throw new RuntimeException("Gagal menghubungi Payment Gateway: " + e.getMessage());
+            }
+        }
+
         return mapToOrderResponse(savedOrder, orderItems);
     }
 
     // --- 2. FITUR MELIHAT RIWAYAT PESANAN (ORDER HISTORY) ---
     public List<OrderResponse> getUserOrderHistory(String userEmail) {
-        // 1. Cari user yang sedang login
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
 
-        // 2. Ambil semua struk pesanan milik user ini dari database
         List<Order> orders = orderRepository.findByUser(user);
 
-        // 3. Ubah Entitas Order menjadi DTO OrderResponse menggunakan fungsi helper kita
         return orders.stream()
                 .map(order -> mapToOrderResponse(order, order.getOrderItems()))
                 .collect(Collectors.toList());
@@ -161,7 +187,6 @@ public class OrderService {
         Shop shop = shopRepository.findByOwner(seller)
                 .orElseThrow(() -> new BadRequestException("Anda belum memiliki toko!"));
 
-        // Ambil semua order yang masuk ke toko ini
         List<Order> shopOrders = orderRepository.findOrdersByShop(shop);
 
         return shopOrders.stream()
@@ -181,7 +206,6 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
 
-        // 🔥 VALIDASI KEAMANAN: Pastikan pesanan ini benar-benar memuat barang dari toko si Seller!
         boolean isOwner = order.getOrderItems().stream()
                 .anyMatch(item -> item.getVariant().getProduct().getShop().getId().equals(shop.getId()));
 
@@ -189,12 +213,10 @@ public class OrderService {
             throw new BadRequestException("Akses Ditolak: Anda tidak bisa memproses pesanan toko lain!");
         }
 
-        // 🔥 VALIDASI LOGIKA: Hanya pesanan yang sudah dibayar (PAID) yang boleh dikirim!
         if (order.getStatus() != OrderStatus.PAID) {
             throw new BadRequestException("Gagal dikirim! Pesanan ini berstatus " + order.getStatus().name() + ". Hanya pesanan PAID yang bisa diselesaikan.");
         }
 
-        // EKSEKUSI PENGIRIMAN!
         order.setStatus(OrderStatus.SHIPPED);
         Order savedOrder = orderRepository.save(order);
 
@@ -204,36 +226,31 @@ public class OrderService {
     // --- 5. FITUR CUSTOMER: KONFIRMASI PESANAN DITERIMA (COMPLETED) ---
     @Transactional
     public OrderResponse completeOrder(Long orderId, String userEmail) {
-        // 1. Cari user yang sedang login (Customer)
         User customer = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
 
-        // 2. Cari Struk Pesanannya
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
 
-        // 3. 🔥 VALIDASI KEAMANAN: Pastikan pesanan ini benar-benar milik Customer tersebut!
         if (!order.getUser().getId().equals(customer.getId())) {
             throw new BadRequestException("Akses Ditolak: Anda tidak bisa menyelesaikan pesanan milik orang lain!");
         }
 
-        // 4. 🔥 VALIDASI LOGIKA: Hanya pesanan yang sedang dikirim (SHIPPED) yang bisa diselesaikan!
         if (order.getStatus() != OrderStatus.SHIPPED) {
             throw new BadRequestException("Gagal! Pesanan ini berstatus " + order.getStatus().name() + ". Hanya pesanan SHIPPED yang bisa diselesaikan.");
         }
 
-        // 5. EKSEKUSI PENYELESAIAN!
         order.setStatus(OrderStatus.COMPLETED);
         Order savedOrder = orderRepository.save(order);
 
         return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());
     }
 
-   // 🔥 PERBAIKAN Helper Method
+   // 🔥 PERBAIKAN Helper Method (Menambahkan Snap Token ke Response)
     private OrderResponse mapToOrderResponse(Order order, List<OrderItem> items) {
         List<OrderItemResponse> itemResponses = items.stream().map(item ->
                 OrderItemResponse.builder()
-                        .productId(item.getVariant().getProduct().getId()) // 🔥 Ambil dari Varian
+                        .productId(item.getVariant().getProduct().getId()) 
                         .productName(item.getVariant().getProduct().getName() + " (" + item.getVariant().getVariantName() + ")")
                         .quantity(item.getQuantity())
                         .price(item.getPrice())
@@ -244,13 +261,16 @@ public class OrderService {
         return OrderResponse.builder()
                 .orderId(order.getId())
                 .customerName(order.getUser().getName())
-                .shippingAddress(order.getShippingAddress().getFullAddress()) // 🔥 Ekstrak String dari Entitas Address
+                .shippingAddress(order.getShippingAddress().getFullAddress()) 
                 .subTotal(order.getSubTotal())
                 .discount(order.getDiscount())
                 .grandTotal(order.getGrandTotal())
                 .status(order.getStatus().name())
                 .orderDate(order.getOrderDate())
                 .voucherCodeUsed(order.getVoucher() != null ? order.getVoucher().getCode() : null)
+                .paymentMethod(order.getPaymentMethod()) // BARU
+                .paymentBank(order.getPaymentBank()) // BARU
+                .snapToken(order.getSnapToken()) // 🔥 TOKEN INI YANG DITUNGGU REACT!
                 .items(itemResponses)
                 .build();
     }
