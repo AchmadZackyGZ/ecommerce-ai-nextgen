@@ -65,7 +65,7 @@ export default function Home() {
             // Efek loading sementara saat React menunggu balasan dari Spring Boot
             <div className="flex justify-center items-center h-40">
               <span className="text-cyan-400 font-bold animate-pulse tracking-widest uppercase">
-                Menginisialisasi Nexia AI Engine...
+                Loading Nexia AI Engine...
               </span>
             </div>
           ) : (
