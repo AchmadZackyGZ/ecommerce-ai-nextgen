@@ -252,6 +252,7 @@ public class OrderService {
                 OrderItemResponse.builder()
                         .productId(item.getVariant().getProduct().getId()) 
                         .productName(item.getVariant().getProduct().getName() + " (" + item.getVariant().getVariantName() + ")")
+                        .imageUrl(item.getVariant().getProduct().getImageUrl())
                         .quantity(item.getQuantity())
                         .price(item.getPrice())
                         .subTotal(item.getPrice().multiply(new BigDecimal(item.getQuantity())))
