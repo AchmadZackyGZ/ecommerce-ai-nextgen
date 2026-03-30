@@ -25,6 +25,7 @@ export const meta = () =>
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false); // 🔥 State baru untuk tombol loading
 
   // 🛒 State Keranjang
   const [cartItems, setCartItems] = useState<any[]>([]);
@@ -34,7 +35,7 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // 🔥 STATE FORM MODAL ALAMAT (Sesuai dengan AddressRequest.java di Backend)
+  // 🔥 STATE FORM MODAL ALAMAT
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressLabel, setAddressLabel] = useState("Rumah");
@@ -106,6 +107,23 @@ export default function CheckoutPage() {
     },
   ];
 
+  // 🚀 INJEKSI SCRIPT MIDTRANS SAAT HALAMAN DIMUAT
+  useEffect(() => {
+    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+
+    const script = document.createElement("script");
+    script.src = snapScript;
+    script.setAttribute("data-client-key", clientKey);
+    script.async = true;
+
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script); // Bersihkan script jika pindah halaman
+    };
+  }, []);
+
   // 🔄 FUNGSI MENGAMBIL DATA AWAL
   const fetchData = async () => {
     try {
@@ -152,9 +170,7 @@ export default function CheckoutPage() {
     fetchData();
   }, [navigate]);
 
-  // 🚀 FUNGSI MENYIMPAN ALAMAT KE BACKEND
   const handleSaveAddress = async () => {
-    // Validasi sederhana
     if (
       !newAddress.recipientName ||
       !newAddress.phoneNumber ||
@@ -168,18 +184,14 @@ export default function CheckoutPage() {
 
     try {
       setIsSavingAddress(true);
-
-      // Gabungkan data form dengan label dan isPrimary
       const payload = {
         ...newAddress,
         label: addressLabel,
         isPrimary: isPrimaryAddress,
       };
-
       const res = await apiClient.post("/addresses", payload);
       toast.success(res.data.message || "Alamat berhasil ditambahkan!");
 
-      // Tutup modal dan bersihkan form
       setIsAddressModalOpen(false);
       setNewAddress({
         recipientName: "",
@@ -192,8 +204,6 @@ export default function CheckoutPage() {
         otherDetails: "",
       });
       setIsPrimaryAddress(false);
-
-      // Tarik ulang data dari backend agar UI terupdate dan alamat baru otomatis terpilih
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Gagal menyimpan alamat.");
@@ -202,7 +212,8 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePlaceOrder = () => {
+  // 🔥 THE MAGIC FUNCTION: EKSEKUSI CHECKOUT & MIDTRANS
+  const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       return toast.error(
         "Silakan tambahkan alamat pengiriman terlebih dahulu!",
@@ -215,7 +226,65 @@ export default function CheckoutPage() {
       );
     }
 
-    toast.success("Mempersiapkan Gateway Pembayaran...");
+    try {
+      setIsProcessingOrder(true);
+      toast.success("Mempersiapkan Gateway Pembayaran...");
+
+      // 1. Siapkan payload sesuai OrderRequest.java di Backend
+      const payload = {
+        addressId: selectedAddress.id,
+        voucherCode: selectedVoucher ? selectedVoucher.code : null,
+        shippingMethod: shippingMethod,
+        paymentMethod: paymentMethod,
+        paymentBank: paymentMethod === "bank_transfer" ? selectedBank : null,
+        sellerNote: sellerNote,
+      };
+
+      // 2. Tembak API Checkout
+      const response = await apiClient.post("/orders/checkout", payload);
+      const orderData = response.data.data;
+
+      // 3. Jika COD, langsung sukses!
+      if (paymentMethod === "cod") {
+        toast.success("Pesanan COD berhasil dibuat!");
+        navigate("/pesanan"); // Arahkan ke halaman daftar pesanan
+        return;
+      }
+
+      // 4. Jika Bank Transfer, Panggil Midtrans Snap Pop-up!
+      if (orderData.snapToken) {
+        // @ts-ignore (Mengabaikan error TypeScript karena window.snap adalah inject eksternal)
+        window.snap.pay(orderData.snapToken, {
+          onSuccess: function (result: any) {
+            toast.success("Pembayaran berhasil diselesaikan!");
+            navigate("/pesanan");
+          },
+          onPending: function (result: any) {
+            toast.warning(
+              "Menunggu pembayaran Anda. Silakan cek status pesanan.",
+            );
+            navigate("/pesanan");
+          },
+          onError: function (result: any) {
+            toast.error("Pembayaran gagal diproses!");
+            navigate("/pesanan");
+          },
+          onClose: function () {
+            toast.info(
+              "Anda menutup halaman sebelum menyelesaikan pembayaran.",
+            );
+            navigate("/pesanan");
+          },
+        });
+      }
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message ||
+          "Gagal membuat pesanan. Silakan coba lagi.",
+      );
+    } finally {
+      setIsProcessingOrder(false);
+    }
   };
 
   if (isLoading) {
@@ -245,7 +314,6 @@ export default function CheckoutPage() {
               {selectedAddress && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-600"></div>
               )}
-
               <div className="flex items-center justify-between mb-4">
                 <div
                   className={`flex items-center gap-2 font-bold ${!selectedAddress ? "text-red-400" : "text-cyan-400"}`}
@@ -261,7 +329,6 @@ export default function CheckoutPage() {
                   </button>
                 )}
               </div>
-
               {selectedAddress ? (
                 <div className="flex flex-col gap-1 pl-7">
                   <span className="font-bold text-white text-lg">
@@ -583,10 +650,12 @@ export default function CheckoutPage() {
               </div>
               <button
                 onClick={handlePlaceOrder}
-                disabled={!selectedAddress}
-                className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
+                disabled={!selectedAddress || isProcessingOrder}
+                className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 disabled:animate-pulse"
               >
-                Buat Pesanan
+                {isProcessingOrder
+                  ? "Mempersiapkan Gateway..."
+                  : "Buat Pesanan"}
               </button>
               <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 mt-2">
                 <ShieldCheck size={12} /> Pembayaran aman dan terenkripsi.
@@ -600,7 +669,6 @@ export default function CheckoutPage() {
       {isAddressModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-2xl rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header Modal */}
             <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
               <h3 className="text-xl font-black text-white">Alamat Baru</h3>
               <button
@@ -610,8 +678,6 @@ export default function CheckoutPage() {
                 <X size={24} />
               </button>
             </div>
-
-            {/* Form Body - Terhubung dengan State */}
             <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
@@ -639,8 +705,6 @@ export default function CheckoutPage() {
                   className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
                 />
               </div>
-
-              {/* Grid 4 Kolom untuk Wilayah */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <input
                   type="text"
@@ -679,7 +743,6 @@ export default function CheckoutPage() {
                   className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
                 />
               </div>
-
               <input
                 type="text"
                 placeholder="Nama Jalan, Gedung, No. Rumah"
@@ -701,7 +764,6 @@ export default function CheckoutPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
               />
-
               <div className="mt-2 flex flex-col gap-3">
                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                   Tandai Sebagai:
@@ -721,7 +783,6 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               </div>
-
               <label className="mt-4 flex cursor-pointer items-center gap-3 w-max">
                 <div
                   className={`flex h-5 w-5 items-center justify-center rounded border ${isPrimaryAddress ? "border-cyan-400 bg-cyan-400" : "border-zinc-600"}`}
@@ -741,8 +802,6 @@ export default function CheckoutPage() {
                 </span>
               </label>
             </div>
-
-            {/* Footer Modal */}
             <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
               <button
                 onClick={() => setIsAddressModalOpen(false)}
@@ -763,7 +822,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (Tetap sama) */}
+      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (Tetap Sama) */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
