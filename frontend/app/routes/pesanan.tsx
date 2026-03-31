@@ -328,7 +328,15 @@ export default function OrderDashboard() {
                       {order.items.map((item: any, idx: number) => (
                         <div key={idx} className="flex items-start gap-4">
                           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/5 flex items-center justify-center">
-                            <Package size={24} className="text-zinc-600" />
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.productName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Package size={24} className="text-zinc-600" />
+                            )}
                           </div>
                           <div className="flex flex-col flex-1">
                             <h4 className="text-sm md:text-base font-bold text-white">
