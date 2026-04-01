@@ -16,6 +16,7 @@ import { generateMeta } from "~/utils/seo";
 import { Link } from "react-router";
 import { apiClient } from "~/services/apiClient";
 import { toast } from "sonner";
+import { useAuthStore } from "~/store/authStore";
 
 export const meta = () =>
   generateMeta(
@@ -29,6 +30,8 @@ export default function OrderDashboard() {
   const [activeTab, setActiveTab] = useState("Semua");
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const user = useAuthStore((state) => state.user);
 
   // 🚀 INJEKSI SCRIPT MIDTRANS (Agar bisa lanjut bayar dari halaman pesanan)
   useEffect(() => {
@@ -105,6 +108,15 @@ export default function OrderDashboard() {
     }
   };
 
+  const getInitial = (name: string) => {
+    if (!name) return "NX"; // fallback jika name kosong
+    const words = name.split(" ");
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   // Filter logika mencocokkan Status Enum Backend dengan Tab UI
   const filteredOrders = orders.filter((order) => {
     if (activeTab === "Semua") return true;
@@ -176,14 +188,14 @@ export default function OrderDashboard() {
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-2xl shadow-2xl">
               <div className="flex items-center gap-4 border-b border-white/10 pb-6">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 font-bold text-white shadow-lg text-xl">
-                  AZ
+                  {user ? getInitial(user.name) : "NX"}
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-base font-bold text-white leading-tight">
-                    Achmad Zacky
+                    {user ? user.name : "Guest"}
                   </h2>
                   <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-cyan-400">
-                    <ShieldCheck size={14} /> Nexia Elite Member
+                    <ShieldCheck size={14} /> {user?.role || "Member"}
                   </span>
                 </div>
               </div>
