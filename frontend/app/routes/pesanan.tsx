@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Search,
   XCircle,
+  Star,
+  MessageSquareQuote,
+  X,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { Link } from "react-router";
@@ -31,9 +34,21 @@ export default function OrderDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const user = useAuthStore((state) => state.user);
+  // 👑 STATE DINAMIS USER
+  const user = useAuthStore((state: any) => state.user);
 
-  // 🚀 INJEKSI SCRIPT MIDTRANS (Agar bisa lanjut bayar dari halaman pesanan)
+  // 🌟 STATE UNTUK MODAL REVIEW
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] =
+    useState<any>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    productId: "",
+    rating: 5,
+    comment: "",
+  });
+
+  // 🚀 INJEKSI SCRIPT MIDTRANS
   useEffect(() => {
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
@@ -55,7 +70,6 @@ export default function OrderDashboard() {
     try {
       setIsLoading(true);
       const res = await apiClient.get("/orders/history");
-      // Urutkan dari yang terbaru ke terlama
       const sortedOrders = res.data.data.sort(
         (a: any, b: any) =>
           new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime(),
@@ -84,7 +98,7 @@ export default function OrderDashboard() {
     window.snap.pay(snapToken, {
       onSuccess: function () {
         toast.success("Pembayaran berhasil diselesaikan!");
-        fetchOrders(); // Refresh data untuk update status jadi PAID
+        fetchOrders();
       },
       onPending: function () {
         toast.info("Menunggu konfirmasi pembayaran Anda.");
@@ -100,7 +114,7 @@ export default function OrderDashboard() {
     try {
       await apiClient.put(`/orders/${orderId}/complete`);
       toast.success("Pesanan berhasil diselesaikan. Terima kasih!");
-      fetchOrders(); // Refresh data
+      fetchOrders();
     } catch (error: any) {
       toast.error(
         error.response?.data?.message || "Gagal menyelesaikan pesanan.",
@@ -108,8 +122,50 @@ export default function OrderDashboard() {
     }
   };
 
+  // 🌟 FUNGSI MENGIRIM ULASAN KE BACKEND
+  const handleSubmitReview = async () => {
+    if (!reviewForm.comment.trim()) {
+      return toast.error("Silakan tulis pengalaman Anda tentang produk ini!");
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      await apiClient.post("/reviews", {
+        productId: parseInt(reviewForm.productId),
+        rating: reviewForm.rating,
+        comment: reviewForm.comment,
+      });
+
+      toast.success("Ulasan berhasil dikirim! Terima kasih atas masukan Anda.");
+      setIsReviewModalOpen(false);
+      setReviewForm({ productId: "", rating: 5, comment: "" });
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message ||
+          "Gagal mengirim ulasan. Server mungkin sedang sibuk.",
+      );
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // 🌟 FUNGSI MEMBUKA MODAL ULASAN
+  const openReviewModal = (order: any) => {
+    setSelectedOrderForReview(order);
+    // Otomatis pilih produk pertama dari pesanan tersebut
+    if (order.items && order.items.length > 0) {
+      setReviewForm({
+        productId: order.items[0].productId.toString(),
+        rating: 5,
+        comment: "",
+      });
+    }
+    setIsReviewModalOpen(true);
+  };
+
+  // 💡 HELPER INISIAL NAMA
   const getInitial = (name: string) => {
-    if (!name) return "NX"; // fallback jika name kosong
+    if (!name) return "NX";
     const words = name.split(" ");
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
@@ -117,7 +173,6 @@ export default function OrderDashboard() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Filter logika mencocokkan Status Enum Backend dengan Tab UI
   const filteredOrders = orders.filter((order) => {
     if (activeTab === "Semua") return true;
     if (activeTab === "Belum Bayar" && order.status === "PENDING") return true;
@@ -128,10 +183,8 @@ export default function OrderDashboard() {
     return false;
   });
 
-  // Cek apakah ada barang yang sedang dikirim untuk trigger AI Widget
   const hasShippedOrders = orders.some((o) => o.status === "SHIPPED");
 
-  // Helper Render Status Badge
   const renderStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -169,7 +222,6 @@ export default function OrderDashboard() {
     }
   };
 
-  // Helper Format Tanggal
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
       day: "numeric",
@@ -191,10 +243,10 @@ export default function OrderDashboard() {
                   {user ? getInitial(user.name) : "NX"}
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-base font-bold text-white leading-tight">
+                  <h2 className="text-base font-bold text-white leading-tight uppercase">
                     {user ? user.name : "Guest"}
                   </h2>
-                  <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-cyan-400">
+                  <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-cyan-400 uppercase tracking-widest">
                     <ShieldCheck size={14} /> {user?.role || "Member"}
                   </span>
                 </div>
@@ -415,7 +467,11 @@ export default function OrderDashboard() {
                             <button className="w-full md:w-auto rounded-xl border border-white/10 bg-transparent px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/5">
                               Beli Lagi
                             </button>
-                            <button className="w-full md:w-auto rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95">
+                            {/* 🔥 FIX: TOMBOL TRIGGER MODAL REVIEW SUDAH NYALA! */}
+                            <button
+                              onClick={() => openReviewModal(order)}
+                              className="w-full md:w-auto rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
+                            >
                               Beri Ulasan
                             </button>
                           </>
@@ -429,6 +485,161 @@ export default function OrderDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ⭐ MODAL FORM BERI ULASAN */}
+      {isReviewModalOpen && selectedOrderForReview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setIsReviewModalOpen(false)}
+          ></div>
+
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between border-b border-white/10 bg-zinc-900/50 p-6">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <MessageSquareQuote className="text-cyan-400" /> Tulis Ulasan
+              </h3>
+              <button
+                onClick={() => setIsReviewModalOpen(false)}
+                className="text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-6">
+              {/* Jika pesanannya punya lebih dari 1 barang, munculkan Dropdown pilihan! */}
+              {selectedOrderForReview.items &&
+                selectedOrderForReview.items.length > 1 && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      Pilih Produk yang mau di-review
+                    </label>
+                    <select
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 appearance-none cursor-pointer"
+                      value={reviewForm.productId}
+                      onChange={(e) =>
+                        setReviewForm({
+                          ...reviewForm,
+                          productId: e.target.value,
+                        })
+                      }
+                    >
+                      {selectedOrderForReview.items.map((item: any) => (
+                        <option
+                          key={item.productId}
+                          value={item.productId}
+                          className="bg-zinc-900 text-white"
+                        >
+                          {item.productName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+              {/* Tampilan 1 Barang (Jika hanya beli 1 macam barang) */}
+              {selectedOrderForReview.items &&
+                selectedOrderForReview.items.length === 1 && (
+                  <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 p-3">
+                    <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-black">
+                      {selectedOrderForReview.items[0].imageUrl ? (
+                        <img
+                          src={selectedOrderForReview.items[0].imageUrl}
+                          alt="Product"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Package
+                          size={20}
+                          className="text-zinc-600 m-auto mt-3"
+                        />
+                      )}
+                    </div>
+                    <span className="text-sm font-bold text-white line-clamp-2">
+                      {selectedOrderForReview.items[0].productName}
+                    </span>
+                  </div>
+                )}
+
+              {/* RATING BINTANG INTERAKTIF */}
+              <div className="flex flex-col items-center justify-center gap-3">
+                <span className="text-sm font-bold text-zinc-400">
+                  Bagaimana kualitas produk ini?
+                </span>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() =>
+                        setReviewForm({ ...reviewForm, rating: star })
+                      }
+                      className="transition-transform hover:scale-110 active:scale-95 focus:outline-none"
+                    >
+                      <Star
+                        size={40}
+                        fill={
+                          star <= reviewForm.rating ? "#facc15" : "transparent"
+                        }
+                        className={
+                          star <= reviewForm.rating
+                            ? "text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]"
+                            : "text-zinc-600"
+                        }
+                      />
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
+                  {reviewForm.rating === 5
+                    ? "Sempurna!"
+                    : reviewForm.rating === 4
+                      ? "Sangat Bagus"
+                      : reviewForm.rating === 3
+                        ? "Cukup Bagus"
+                        : reviewForm.rating === 2
+                          ? "Kurang Memuaskan"
+                          : "Sangat Mengecewakan"}
+                </span>
+              </div>
+
+              {/* KOLOM KOMENTAR */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                  Bagikan pengalaman Anda
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Misal: Barangnya ori, packing aman, dan pengirimannya super cepat! Mantap pokoknya."
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600 resize-none"
+                  value={reviewForm.comment}
+                  onChange={(e) =>
+                    setReviewForm({ ...reviewForm, comment: e.target.value })
+                  }
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 bg-zinc-900/50 p-6 flex justify-end gap-3">
+              <button
+                onClick={() => setIsReviewModalOpen(false)}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                disabled={isSubmittingReview}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSubmitReview}
+                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] disabled:opacity-50 disabled:animate-pulse"
+                disabled={isSubmittingReview}
+              >
+                {isSubmittingReview ? "Mengirim..." : "Kirim Ulasan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
