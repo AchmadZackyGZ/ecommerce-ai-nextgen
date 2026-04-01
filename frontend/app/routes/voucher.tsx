@@ -56,7 +56,7 @@ export default function VoucherWallet() {
   const fetchVouchers = async () => {
     try {
       setIsLoading(true);
-      const res = await apiClient.get("/vouchers");
+      const res = await apiClient.get("/vouchers/public");
       const allVouchers = res.data.data || [];
 
       const now = new Date();
