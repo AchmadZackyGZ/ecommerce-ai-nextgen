@@ -15,8 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/vouchers")
-// 🔥 GEMBOK SAKTI: HANYA SELLER YANG BOLEH AKSES CONTROLLER INI
-@PreAuthorize("hasRole('SELLER')")
 public class VoucherController {
 
     @Autowired
@@ -24,6 +22,7 @@ public class VoucherController {
 
     // 1. API Membuat Voucher
     @PostMapping
+    @PreAuthorize("hasRole('SELLER')") // Hanya penjual yang bisa membuat voucher
     public ResponseEntity<ApiResponse<VoucherResponse>> createVoucher(
             @RequestBody VoucherRequest request,
             Principal principal
@@ -39,14 +38,30 @@ public class VoucherController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 2. API Melihat Daftar Voucher
+    // 2. API Melihat Daftar Voucher Toko Sendiri (Hanya Seller)
     @GetMapping
+    @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<ApiResponse<List<VoucherResponse>>> getShopVouchers(Principal principal) {
         List<VoucherResponse> responseData = voucherService.getShopVouchers(principal.getName());
 
         ApiResponse<List<VoucherResponse>> response = ApiResponse.<List<VoucherResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Berhasil memuat daftar voucher toko Anda.")
+                .data(responseData)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 3. 🔥 API BARU: MELIHAT SEMUA VOUCHER PUBLIK (Bisa diakses Customer & Seller)
+    @GetMapping("/public")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('SELLER')") 
+    public ResponseEntity<ApiResponse<List<VoucherResponse>>> getAllPublicVouchers() {
+        List<VoucherResponse> responseData = voucherService.getAllPublicVoucher();
+
+        ApiResponse<List<VoucherResponse>> response = ApiResponse.<List<VoucherResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil memuat semua voucher publik.")
                 .data(responseData)
                 .build();
 
