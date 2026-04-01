@@ -84,6 +84,15 @@ public class VoucherService {
         return vouchers.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    // 3 Fitur Customer untuk melihat seluruh Voucher yang mereka punya
+    public List<VoucherResponse> getAllPublicVoucher() {
+        List<Voucher> vouchers = voucherRepository.findAll();
+
+        return vouchers.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     // Fungsi Helper
     private VoucherResponse mapToResponse(Voucher voucher) {
         return VoucherResponse.builder()
