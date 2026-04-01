@@ -64,7 +64,18 @@ export default function CheckoutPage() {
 
   const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
   const protectionFee = 1000;
-  const discountAmount = selectedVoucher ? selectedVoucher.discountValue : 0;
+
+  // 🔥 LOGIKA DISKON BARU (Menyesuaikan dengan persentase dan batas maksimal dari Backend)
+  let discountAmount = 0;
+  if (selectedVoucher) {
+    const calculatedDiscount =
+      (totalProductPrice * selectedVoucher.discountPercentage) / 100;
+    discountAmount =
+      calculatedDiscount > selectedVoucher.maxDiscountAmount
+        ? selectedVoucher.maxDiscountAmount
+        : calculatedDiscount;
+  }
+
   const grandTotal =
     totalProductPrice + shippingCost + protectionFee - discountAmount;
 
@@ -154,8 +165,15 @@ export default function CheckoutPage() {
       }
 
       try {
-        const voucherRes = await apiClient.get("/vouchers");
-        setVouchers(voucherRes.data.data || []);
+        const voucherRes = await apiClient.get("/vouchers/public");
+        const allVouchers = voucherRes.data.data || [];
+
+        const now = new Date();
+        const activeVouchers = allVouchers.filter(
+          (v: any) => new Date(v.expiredAt) >= now && v.quota > 0,
+        );
+
+        setVouchers(activeVouchers);
       } catch (voucherError) {
         setVouchers([]);
       }
@@ -889,10 +907,11 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-white">
-                        {voucher.name}
+                        Diskon {voucher.discountPercentage}% (Max Rp{" "}
+                        {voucher.maxDiscountAmount?.toLocaleString("id-ID")})
                       </span>
                       <span className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                        {voucher.description}
+                        KODE: {voucher.code} • Toko: {voucher.shopName}
                       </span>
                     </div>
                   </label>
