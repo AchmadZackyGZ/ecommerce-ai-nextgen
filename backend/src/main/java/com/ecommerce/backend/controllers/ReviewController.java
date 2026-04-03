@@ -20,9 +20,9 @@ public class ReviewController {
     @Autowired
     private ReviewService reviewService;
 
-    // 1. API: Menambah Review (HANYA CUSTOMER YANG BISA)
+    // 1. API: Menambah Review (HANYA CUSTOMER & SELLER YANG BISA)
     @PostMapping
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('SELLER')")
     public ResponseEntity<ApiResponse<ReviewResponse>> addReview(
             @RequestParam("productId") Long productId,
             @RequestParam("rating") Integer rating,
