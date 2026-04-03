@@ -30,32 +30,40 @@ export default function ProductDetail() {
 
   // 📦 STATE : Data Asli dari Backend
   const [product, setProduct] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]); // 🔥 STATE BARU UNTUK REVIEW ASLI
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
 
   // 🎨 State UI
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState("ulasan"); // Default ke ulasan agar langsung terlihat!
+  const [activeTab, setActiveTab] = useState("ulasan");
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [reviewFilter, setReviewFilter] = useState<number | "Semua">("Semua");
+  const [reviewFilter, setReviewFilter] = useState<number | string>("Semua"); // 🔥 Tipe diubah untuk dukung filter string
 
-  // 🚀 MESIN PENARIK DATA DARI SPRING BOOT
+  // 🚀 MESIN PENARIK DATA DARI SPRING BOOT (DOUBLE FETCHING)
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         setIsLoading(true);
-        const response = await apiClient.get(`/products/${id}`);
-        const fetchedProduct = response.data.data;
 
+        // 🔥 LAKUKAN 2 REQUEST SEKALIGUS UNTUK PERFORMA MAKSIMAL
+        const [productRes, reviewsRes] = await Promise.all([
+          apiClient.get(`/products/${id}`),
+          apiClient.get(`/reviews/product/${id}`), // Menyedot dari API ReviewController Anda!
+        ]);
+
+        const fetchedProduct = productRes.data.data;
         setProduct(fetchedProduct);
 
-        // Auto-select varian pertama jika ada
         if (fetchedProduct.variants && fetchedProduct.variants.length > 0) {
           setSelectedVariant(fetchedProduct.variants[0]);
         }
+
+        // Simpan data ulasan asli ke State
+        setReviews(reviewsRes.data.data || []);
       } catch (error) {
-        console.error("Gagal memuat detail produk:", error);
+        console.error("Gagal memuat data:", error);
         toast.error("Produk tidak ditemukan atau server bermasalah.");
         navigate("/");
       } finally {
@@ -63,7 +71,7 @@ export default function ProductDetail() {
       }
     };
 
-    fetchProduct();
+    fetchProductAndReviews();
   }, [id, navigate]);
 
   const dynamicPrice =
@@ -107,7 +115,7 @@ export default function ProductDetail() {
     }
   };
 
-  // 💡 HELPER SENSOR NAMA (Contoh: "achmad zacky" -> "ac***ky")
+  // 💡 HELPER SENSOR NAMA
   const getMaskedName = (name: string) => {
     if (!name || name.length <= 2) return name;
     return `${name.substring(0, 2)}***${name.substring(name.length - 2)}`;
@@ -124,7 +132,38 @@ export default function ProductDetail() {
     });
   };
 
-  // 🚧 DUMMY DATA SEMENTARA (Sambil Menunggu Backend Di-update)
+  // 📊 MESIN PENGHITUNG STATISTIK ULASAN DINAMIS (Berdasarkan Data Asli)
+  const totalReviews = reviews.length;
+  const averageRating =
+    totalReviews > 0
+      ? (
+          reviews.reduce((acc, curr) => acc + curr.rating, 0) / totalReviews
+        ).toFixed(1)
+      : "0.0";
+
+  const ratingCounts = {
+    5: reviews.filter((r) => r.rating === 5).length,
+    4: reviews.filter((r) => r.rating === 4).length,
+    3: reviews.filter((r) => r.rating === 3).length,
+    2: reviews.filter((r) => r.rating === 2).length,
+    1: reviews.filter((r) => r.rating === 1).length,
+  };
+
+  const withCommentCount = reviews.filter(
+    (r) => r.comment && r.comment.trim() !== "",
+  ).length;
+  const withMediaCount = reviews.filter((r) => r.imageUrl).length;
+
+  // 🔍 MESIN FILTER ULASAN
+  const filteredReviews = reviews.filter((r) => {
+    if (reviewFilter === "Semua") return true;
+    if (reviewFilter === "Dengan Komentar")
+      return r.comment && r.comment.trim() !== "";
+    if (reviewFilter === "Dengan Media") return !!r.imageUrl;
+    return r.rating === reviewFilter;
+  });
+
+  // 🚧 DUMMY SHOP SEMENTARA (Menunggu Update API Produk dari Backend)
   const DUMMY_SHOP = {
     name: product?.shopName || "Nexia Official Store",
     rating: 4.9,
@@ -134,51 +173,13 @@ export default function ProductDetail() {
     avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=" + product?.shopName,
   };
 
-  const DUMMY_REVIEWS = [
-    {
-      id: 1,
-      userName: "priskadev",
-      rating: 5,
-      date: "2026-10-29T17:56:00",
-      variantName: "Titanium Blue, 256GB",
-      comment:
-        "Sepadan dengan Harga: Ya\nFitur Terbaik: Dynamic Island, Type C\n\nKerasa banget Upgrade Iphone Reguler Tahun ini. Pink nya soft banget. Finishing BackGlass nya Mate. Tidak bercak jari. Mantap lah pokoknya Unitnya tidak ada kendala. Katanya preorder tapi udh kayak di kirim tanpa preorder. cepat sekali ⚡⚡⚡",
-      images: [
-        "https://images.unsplash.com/photo-1603898037225-b44c6e4e89bd?w=100",
-        "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=100",
-      ],
-    },
-    {
-      id: 2,
-      userName: "dewiknthi288",
-      rating: 4,
-      date: "2026-02-04T16:21:00",
-      variantName: "Titanium Gray, 512GB",
-      comment:
-        "Barang ori, imei terdaftar. Cuma pengirimannya agak telat 1 hari dari estimasi. Tapi so far puas sama barangnya.",
-      images: [],
-    },
-    {
-      id: 3,
-      userName: "achmadzacky",
-      rating: 5,
-      date: "2026-01-15T09:30:00",
-      variantName: "Titanium Black, 1TB",
-      comment:
-        "Gila sih ini performanya buat main game berat rata kanan semua! Kameranya juga jernih banget buat zoom jauh.",
-      images: [
-        "https://images.unsplash.com/photo-1512054502232-10a0a035d672?w=100",
-      ],
-    },
-  ];
-
   if (isLoading) {
     return (
       <main className="min-h-screen pb-32 pt-40 flex justify-center items-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-400"></div>
           <span className="text-cyan-400 font-bold animate-pulse uppercase tracking-widest">
-            Memuat Data...
+            Memuat Data Produk...
           </span>
         </div>
       </main>
@@ -189,10 +190,6 @@ export default function ProductDetail() {
     product?.imageUrl ||
       "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500",
   ];
-  const filteredReviews =
-    reviewFilter === "Semua"
-      ? DUMMY_REVIEWS
-      : DUMMY_REVIEWS.filter((r) => r.rating === reviewFilter);
 
   return (
     <main className="min-h-screen pb-32 pt-28 relative">
@@ -306,7 +303,7 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* 🏬 AREA TENGAH: KARTU PROFIL TOKO (SHOPEE CLONE) */}
+        {/* 🏬 AREA TENGAH: KARTU PROFIL TOKO */}
         <div className="mb-12 flex flex-col md:flex-row items-center justify-between gap-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-xl">
           <div className="flex items-center gap-6 w-full md:w-auto md:border-r border-white/10 md:pr-10">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-white/10 bg-black">
@@ -337,7 +334,7 @@ export default function ProductDetail() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4 w-full md:w-auto text-sm">
             <div className="flex flex-col gap-1">
-              <span className="text-zinc-500">Penilaian</span>
+              <span className="text-zinc-500">Penilaian Toko</span>
               <span className="font-bold text-cyan-400">
                 {DUMMY_SHOP.rating}k{" "}
                 <span className="text-xs font-normal text-zinc-500">/ 5.0</span>
@@ -376,7 +373,7 @@ export default function ProductDetail() {
                 {tab}
                 {tab === "ulasan" && (
                   <span className="ml-2 text-xs bg-cyan-500 text-black px-2 py-0.5 rounded-full">
-                    {DUMMY_REVIEWS.length}
+                    {totalReviews}
                   </span>
                 )}
                 {activeTab === tab && (
@@ -387,7 +384,7 @@ export default function ProductDetail() {
           </div>
 
           <div className="min-h-[300px] text-zinc-300">
-            {/* TAB DESKRIPSI & SPESIFIKASI (Sama seperti sebelumnya) */}
+            {/* TAB DESKRIPSI & SPESIFIKASI */}
             {activeTab === "deskripsi" && (
               <div className="animate-in fade-in duration-500 space-y-6 text-base leading-relaxed">
                 <p className="whitespace-pre-wrap">{product.description}</p>
@@ -401,14 +398,14 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* ⭐ THE REVIEW ENGINE (SHOPEE CLONE) */}
+            {/* ⭐ TAB ULASAN DINAMIS DARI DATABASE */}
             {activeTab === "ulasan" && (
               <div className="animate-in fade-in duration-500 flex flex-col gap-8">
-                {/* Review Header & Filters */}
+                {/* Review Header & Filters Dinamis */}
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-8 rounded-2xl bg-black/20 border border-white/5 p-6">
                   <div className="flex flex-col items-center justify-center min-w-[120px]">
                     <div className="text-5xl font-black text-white flex items-baseline gap-1">
-                      4.8{" "}
+                      {averageRating}{" "}
                       <span className="text-xl text-zinc-500 font-medium">
                         / 5
                       </span>
@@ -418,7 +415,11 @@ export default function ProductDetail() {
                         <Star
                           key={i}
                           size={18}
-                          fill={i < 4 ? "currentColor" : "none"}
+                          fill={
+                            i < Math.round(Number(averageRating))
+                              ? "currentColor"
+                              : "none"
+                          }
                         />
                       ))}
                     </div>
@@ -437,19 +438,26 @@ export default function ProductDetail() {
                         onClick={() => setReviewFilter(star)}
                         className={`px-5 py-2 rounded-xl text-sm font-bold border transition-colors ${reviewFilter === star ? "bg-cyan-500 text-black border-cyan-500" : "bg-transparent text-zinc-400 border-white/10 hover:border-cyan-500/50"}`}
                       >
-                        {star} Bintang
+                        {star} Bintang (
+                        {ratingCounts[star as keyof typeof ratingCounts]})
                       </button>
                     ))}
-                    <button className="px-5 py-2 rounded-xl text-sm font-bold border border-white/10 bg-transparent text-zinc-400 hover:border-cyan-500/50">
-                      Dengan Komentar
+                    <button
+                      onClick={() => setReviewFilter("Dengan Komentar")}
+                      className={`px-5 py-2 rounded-xl text-sm font-bold border transition-colors ${reviewFilter === "Dengan Komentar" ? "bg-cyan-500 text-black border-cyan-500" : "bg-transparent text-zinc-400 border-white/10 hover:border-cyan-500/50"}`}
+                    >
+                      Dengan Komentar ({withCommentCount})
                     </button>
-                    <button className="px-5 py-2 rounded-xl text-sm font-bold border border-white/10 bg-transparent text-zinc-400 hover:border-cyan-500/50">
-                      Dengan Media
+                    <button
+                      onClick={() => setReviewFilter("Dengan Media")}
+                      className={`px-5 py-2 rounded-xl text-sm font-bold border transition-colors ${reviewFilter === "Dengan Media" ? "bg-cyan-500 text-black border-cyan-500" : "bg-transparent text-zinc-400 border-white/10 hover:border-cyan-500/50"}`}
+                    >
+                      Dengan Media ({withMediaCount})
                     </button>
                   </div>
                 </div>
 
-                {/* Review List */}
+                {/* Review List Dinamis */}
                 <div className="flex flex-col divide-y divide-white/5">
                   {filteredReviews.length === 0 ? (
                     <div className="py-12 text-center text-zinc-500 flex flex-col items-center gap-3">
@@ -461,13 +469,13 @@ export default function ProductDetail() {
                       <div key={review.id} className="flex gap-4 py-8">
                         <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-800 overflow-hidden border border-white/10">
                           <img
-                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`}
+                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${review.customerName}`}
                             alt="avatar"
                           />
                         </div>
                         <div className="flex flex-col flex-1">
                           <span className="text-sm font-bold text-white">
-                            {getMaskedName(review.userName)}
+                            {getMaskedName(review.customerName)}
                           </span>
                           <div className="flex text-yellow-400 mt-1 mb-2">
                             {[...Array(5)].map((_, i) => (
@@ -481,29 +489,23 @@ export default function ProductDetail() {
                             ))}
                           </div>
                           <span className="text-[11px] text-zinc-500 mb-3">
-                            {formatDate(review.date)} | Variasi:{" "}
-                            {review.variantName}
+                            {formatDate(review.createdAt)}
                           </span>
 
                           <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
                             {review.comment}
                           </p>
 
-                          {/* Foto Review */}
-                          {review.images && review.images.length > 0 && (
+                          {/* Foto Review dari Cloudinary */}
+                          {review.imageUrl && (
                             <div className="flex gap-2 mt-4">
-                              {review.images.map((img, i) => (
-                                <div
-                                  key={i}
-                                  className="h-16 w-16 md:h-20 md:w-20 rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
-                                >
-                                  <img
-                                    src={img}
-                                    alt="review"
-                                    className="h-full w-full object-cover"
-                                  />
-                                </div>
-                              ))}
+                              <div className="h-16 w-16 md:h-20 md:w-20 rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:opacity-80 transition-opacity">
+                                <img
+                                  src={review.imageUrl}
+                                  alt="Bukti Review"
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
                             </div>
                           )}
 
