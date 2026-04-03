@@ -122,7 +122,7 @@ export default function OrderDashboard() {
     }
   };
 
-  // 🌟 FUNGSI MENGIRIM ULASAN KE BACKEND
+  // 🌟 FUNGSI MENGIRIM ULASAN KE BACKEND (MENYESUAIKAN DENGAN @RequestParam)
   const handleSubmitReview = async () => {
     if (!reviewForm.comment.trim()) {
       return toast.error("Silakan tulis pengalaman Anda tentang produk ini!");
@@ -130,10 +130,20 @@ export default function OrderDashboard() {
 
     try {
       setIsSubmittingReview(true);
-      await apiClient.post("/reviews", {
-        productId: parseInt(reviewForm.productId),
-        rating: reviewForm.rating,
-        comment: reviewForm.comment,
+
+      // 🔥 RAKIT DATA SEBAGAI FORM-DATA (Bukan JSON)
+      const formData = new FormData();
+      formData.append("productId", reviewForm.productId);
+      formData.append("rating", reviewForm.rating.toString());
+      formData.append("comment", reviewForm.comment);
+      // Nanti jika ada fitur upload foto di React, tinggal tambahkan:
+      // formData.append("image", fileFoto);
+
+      // Tembakkan ke Backend Anda yang canggih itu!
+      await apiClient.post("/reviews", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
       toast.success("Ulasan berhasil dikirim! Terima kasih atas masukan Anda.");
