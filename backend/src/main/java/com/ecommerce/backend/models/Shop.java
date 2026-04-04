@@ -21,6 +21,9 @@ public class Shop {
 
     private String description;
 
+    // Simpan URL dari Cloudinary (jika upload manual) ATAU URL Dicebear (jika generate random)
+    private String avatarUrl;
+
     // ENUM : Status Toko
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
