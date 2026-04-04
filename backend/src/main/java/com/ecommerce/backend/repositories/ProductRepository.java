@@ -5,4 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {}
+public interface ProductRepository extends JpaRepository<Product, Long> {
+    // 🔥 MENGHITUNG TOTAL PRODUK YANG DIMILIKI SEBUAH TOKO
+    int countByShop(com.ecommerce.backend.models.Shop shop);
+}
