@@ -1,94 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Search, SlidersHorizontal, ChevronDown, Star, X } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  ChevronDown,
+  Star,
+  X,
+  PackageX,
+  ShieldCheck,
+} from "lucide-react";
 import { generateMeta } from "~/utils/seo";
+import { apiClient } from "~/services/apiClient"; // 🔥 IMPORT API CLIENT KITA
 
 export const meta = () =>
   generateMeta("Katalog Produk", "Jelajahi teknologi masa depan di Nexia.");
-
-// 📦 DATA DUMMY (Cakupannya harus luas untuk tes filter)
-const DUMMY_PRODUCTS = [
-  {
-    id: 901,
-    name: "Sony WH-1000XM5 Noise Cancelling",
-    category: "Audio",
-    price: 5500000,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400",
-    dateAdded: "2026-03-10",
-  },
-  {
-    id: 902,
-    name: "iPhone 15 Pro Max Titanium",
-    category: "Smartphone",
-    price: 25000000,
-    rating: 5.0,
-    image:
-      "https://images.unsplash.com/photo-1696446701796-da61225697cc?q=80&w=400",
-    dateAdded: "2026-01-15",
-  },
-  {
-    id: 903,
-    name: "Laptop Gaming AI NextGen",
-    category: "Laptop",
-    price: 35000000,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=400",
-    dateAdded: "2026-02-20",
-  },
-  {
-    id: 904,
-    name: "DJI Mini 4 Pro Drone",
-    category: "Camera",
-    price: 12500000,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?q=80&w=400",
-    dateAdded: "2025-11-05",
-  },
-  {
-    id: 905,
-    name: "Oculus Quest 3 VR Headset",
-    category: "Gaming",
-    price: 8500000,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=400",
-    dateAdded: "2026-03-01",
-  },
-  {
-    id: 906,
-    name: "Samsung Galaxy S24 Ultra",
-    category: "Smartphone",
-    price: 21999000,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1610945265064-32010b1e15fa?q=80&w=400",
-    dateAdded: "2026-02-10",
-  },
-  {
-    id: 907,
-    name: "Keychron Q1 Pro Mechanical",
-    category: "Accessories",
-    price: 2850000,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=400",
-    dateAdded: "2025-12-15",
-  },
-  {
-    id: 908,
-    name: "Apple AirPods Pro Gen 2",
-    category: "Audio",
-    price: 3999000,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1606220588913-b3eea414115f?q=80&w=400",
-    dateAdded: "2026-01-20",
-  },
-];
 
 const CATEGORIES = [
   "Semua Produk",
@@ -103,7 +28,11 @@ const CATEGORIES = [
 
 export default function KatalogPage() {
   const [searchParams] = useSearchParams();
-  const urlQuery = searchParams.get("q") || ""; // Tangkap query dari TopNavbar
+  const urlQuery = searchParams.get("q") || "";
+
+  // 🚀 STATE DATA ASLI DARI BACKEND
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 🧠 THE STATE ENGINE
   const [searchQuery, setSearchQuery] = useState(urlQuery);
@@ -117,31 +46,51 @@ export default function KatalogPage() {
     setSearchQuery(urlQuery);
   }, [urlQuery]);
 
+  // 🔄 MENYEDOT DATA DARI SPRING BOOT
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const res = await apiClient.get("/products");
+        setProducts(res.data.data || []);
+      } catch (error) {
+        console.error("Gagal mengambil data katalog:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   // 🧠 LOGIKA FILTER & SORTING (Dijalankan setiap ada perubahan state)
   const filteredAndSortedProducts = useMemo(() => {
-    let result = [...DUMMY_PRODUCTS];
+    let result = [...products]; // 🔥 SEKARANG MENGGUNAKAN DATA DARI DATABASE
 
-    // 1. FILTER PENCARIAN KEYWORD (Bug Fix 1)
+    // 1. FILTER PENCARIAN KEYWORD
     if (searchQuery.trim() !== "") {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(
         (product) =>
-          product.name.toLowerCase().includes(lowerQuery) ||
-          product.category.toLowerCase().includes(lowerQuery),
+          product.name?.toLowerCase().includes(lowerQuery) ||
+          product.shopName?.toLowerCase().includes(lowerQuery) ||
+          product.category?.toLowerCase().includes(lowerQuery),
       );
     }
 
-    // 2. FILTER KATEGORI (Bug Fix 2)
+    // 2. FILTER KATEGORI (MURNI DARI KOLOM DATABASE BARU KITA)
     if (selectedCategory !== "Semua Produk") {
       result = result.filter(
-        (product) => product.category === selectedCategory,
+        (product) =>
+          product.category &&
+          product.category.toLowerCase() === selectedCategory.toLowerCase(),
       );
     }
 
-    // 3. FILTER RENTANG HARGA (Bug Fix 3)
+    // 3. FILTER RENTANG HARGA
     result = result.filter((product) => product.price <= maxPrice);
 
-    // 4. LOGIKA SORTING (Bug Fix 4)
+    // 4. LOGIKA SORTING
     switch (sortBy) {
       case "harga_rendah":
         result.sort((a, b) => a.price - b.price);
@@ -152,7 +101,8 @@ export default function KatalogPage() {
       case "terbaru":
         result.sort(
           (a, b) =>
-            new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime(),
+            // 🔥 Menggunakan createdAt asli dari PostgreSQL
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         break;
       case "relevan":
@@ -162,7 +112,7 @@ export default function KatalogPage() {
     }
 
     return result;
-  }, [searchQuery, selectedCategory, maxPrice, sortBy]);
+  }, [products, searchQuery, selectedCategory, maxPrice, sortBy]);
 
   // Handler untuk mereset filter
   const resetFilters = () => {
@@ -184,7 +134,7 @@ export default function KatalogPage() {
             </span>
           </h1>
           <p className="text-zinc-400 text-sm md:text-base">
-            Temukan produk teknologi masa depan incaran Anda.
+            Temukan produk teknologi incaran Anda.
           </p>
         </div>
 
@@ -252,7 +202,7 @@ export default function KatalogPage() {
                 ))}
               </div>
 
-              {/* Filter: Rentang Harga (BUG FIXED: Nampak Angka Dinamis!) */}
+              {/* Filter: Rentang Harga */}
               <div className="flex flex-col gap-4">
                 <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                   Rentang Harga
@@ -302,7 +252,7 @@ export default function KatalogPage() {
 
           {/* 🛒 AREA KANAN: GRID PRODUK */}
           <div className="flex-1 flex flex-col gap-6">
-            {/* Top Bar: Info & Sorting (BUG FIXED: Multiple Sort Options!) */}
+            {/* Top Bar: Info & Sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900/30 px-6 py-4 backdrop-blur-xl">
               <span className="text-sm font-medium text-zinc-400">
                 Menampilkan{" "}
@@ -338,10 +288,18 @@ export default function KatalogPage() {
               </div>
             </div>
 
-            {/* Product Grid */}
-            {filteredAndSortedProducts.length === 0 ? (
+            {/* STATUS LOADING */}
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-400 mb-4"></div>
+                <span className="text-sm font-bold text-cyan-400 tracking-widest uppercase animate-pulse">
+                  Menyinkronkan Katalog...
+                </span>
+              </div>
+            ) : filteredAndSortedProducts.length === 0 ? (
+              /* STATUS KOSONG */
               <div className="flex flex-col items-center justify-center py-20 rounded-3xl border border-white/5 bg-zinc-900/20">
-                <Search size={48} className="text-zinc-700 mb-4" />
+                <PackageX size={48} className="text-zinc-700 mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">
                   Produk tidak ditemukan
                 </h3>
@@ -357,6 +315,7 @@ export default function KatalogPage() {
                 </button>
               </div>
             ) : (
+              /* GRID PRODUK ASLI */
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 animate-in fade-in duration-500">
                 {filteredAndSortedProducts.map((product) => (
                   <Link
@@ -365,29 +324,64 @@ export default function KatalogPage() {
                     className="group flex flex-col rounded-3xl border border-white/5 bg-zinc-900/30 p-4 transition-all hover:-translate-y-1 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl"
                   >
                     <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-800 mb-4">
-                      <div className="absolute top-3 left-3 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-md">
-                        {product.category}
-                      </div>
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
+                      {/* 🔥 Badge Kategori Dinamis */}
+                      {product.category && (
+                        <div className="absolute top-3 left-3 z-10 rounded-full bg-black/80 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-md border border-white/10">
+                          {product.category}
+                        </div>
+                      )}
+
+                      {/* 🔥 Badge Stok Habis */}
+                      {product.stock <= 0 && (
+                        <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                          <span className="bg-red-500 text-white text-xs font-black uppercase px-3 py-1 rounded-full border border-red-400">
+                            Habis Terjual
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 🔥 Gambar Asli dari Backend */}
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-600 font-bold text-xs uppercase tracking-widest">
+                          No Image
+                        </div>
+                      )}
                     </div>
+
                     <div className="flex flex-col flex-1 px-2">
                       <h3 className="text-base font-bold text-white line-clamp-2 mb-2 group-hover:text-cyan-400 transition-colors">
                         {product.name}
                       </h3>
-                      <div className="mt-auto flex items-center justify-between pt-2">
-                        <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-                          Rp {product.price.toLocaleString("id-ID")}
+
+                      <div className="mt-auto flex flex-col gap-1">
+                        <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                          Rp {product.price?.toLocaleString("id-ID")}
                         </span>
-                        <div className="flex items-center gap-1 text-xs font-bold text-zinc-400">
-                          <Star
-                            size={12}
-                            className="fill-yellow-500 text-yellow-500"
-                          />{" "}
-                          {product.rating}
+
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                          <span className="text-[10px] md:text-xs font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                            <ShieldCheck
+                              size={12}
+                              className="text-emerald-500"
+                            />{" "}
+                            {product.shopName || "Toko Rahasia"}
+                          </span>
+                          <div className="flex items-center gap-1 text-xs font-bold text-zinc-400">
+                            <Star
+                              size={12}
+                              className="fill-yellow-500 text-yellow-500"
+                            />
+                            {/* 🔥 Rating Dinamis dari Backend */}
+                            {product.shopRating
+                              ? Number(product.shopRating).toFixed(1)
+                              : "5.0"}
+                          </div>
                         </div>
                       </div>
                     </div>
