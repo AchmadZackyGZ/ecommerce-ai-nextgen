@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class ProductResponse {
     private Long id;
     private String name;
+    private String category; // Fitur Kategori untuk memudahkan pencarian dan filter produk di frontend
     private String description;
     private BigDecimal price;
     private Integer stock;
