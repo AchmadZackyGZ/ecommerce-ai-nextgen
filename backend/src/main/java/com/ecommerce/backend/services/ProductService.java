@@ -10,6 +10,7 @@ import com.ecommerce.backend.models.ShopStatus;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.ProductRepository;
 import com.ecommerce.backend.repositories.ProductVariantRepository;
+import com.ecommerce.backend.repositories.ReviewRepository;
 import com.ecommerce.backend.repositories.ShopRepository;
 import com.ecommerce.backend.repositories.UserRepository;
 
@@ -40,6 +41,9 @@ public class ProductService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     @Autowired
     private CloudinaryService cloudinaryService;
@@ -178,6 +182,22 @@ public class ProductService {
             ).collect(Collectors.toList());
         }
 
+        // 🔥 LOGIKA DINAMIS 1: Hitung Rata-Rata Rating Toko dari Database
+        Double averageRating = reviewRepository.getAverageRatingByShopId(product.getShop().getId());
+        
+        // 🔥 LOGIKA DINAMIS 2: Hitung Total Produk Toko saat ini
+        int totalProducts = productRepository.countByShop(product.getShop());
+
+        // 🔥 LOGIKA DINAMIS 3: Kalkulator Waktu Bergabung (Join Date)
+        String joinDateStr = "Baru Bergabung";
+        if (product.getShop().getCreatedAt() != null) {
+            long days = java.time.temporal.ChronoUnit.DAYS.between(product.getShop().getCreatedAt(), java.time.LocalDateTime.now());
+            if (days == 0) joinDateStr = "Hari ini";
+            else if (days < 30) joinDateStr = days + " Hari Lalu";
+            else if (days < 365) joinDateStr = (days / 30) + " Bulan Lalu";
+            else joinDateStr = (days / 365) + " Tahun Lalu";
+        }
+
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -188,9 +208,9 @@ public class ProductService {
                 .shopId(product.getShop().getId())
                 .shopName(product.getShop().getName())
                 .shopAvatar(product.getShop().getAvatarUrl()) // Ambil avatar toko dari database
-                .shopRating(4.9) // Sementara kita set rating tinggi (Nanti bisa dihitung dari tabel Review)
-                .shopTotalProducts(15) // Jumlah produk toko
-                .shopJoinDate("2 Tahun Lalu") // Waktu bergabung
+                .shopRating(averageRating) 
+                .shopTotalProducts(totalProducts) 
+                .shopJoinDate(joinDateStr)
                 .variants(variantResponses) //  KITA SELIPKAN DATA VARIAN DI SINI!
                 .createdAt(product.getCreatedAt())
                 .build();
