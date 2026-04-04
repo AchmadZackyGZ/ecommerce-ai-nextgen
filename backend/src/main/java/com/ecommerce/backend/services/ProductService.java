@@ -74,6 +74,7 @@ public class ProductService {
 
         Product product = Product.builder()
                 .name(request.getName())
+                .category(request.getCategory()) //  Jangan lupa set kategori dari request ke entity!
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .stock(request.getStock())
@@ -142,6 +143,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
 
         existingProduct.setName(request.getName());
+        existingProduct.setCategory(request.getCategory()); // Jangan lupa update kategori juga!
         existingProduct.setDescription(request.getDescription());
         existingProduct.setPrice(request.getPrice());
         existingProduct.setStock(request.getStock());
@@ -201,6 +203,7 @@ public class ProductService {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
+                .category(product.getCategory()) //  Jangan lupa sertakan kategori di response juga!
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .stock(product.getStock())
