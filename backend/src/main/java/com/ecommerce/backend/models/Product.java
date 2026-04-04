@@ -39,6 +39,9 @@ public class Product {
 
     private String imageUrl; // Alamat gambar produk kita nanti
 
+    @Column(nullable = false)
+    private String category; //  Fitur Kategori untuk memudahkan pencarian dan filter produk di frontend
+
     // 🔥 RELASI EVOLUSI V1: Satu Produk punya banyak Varian (Warna/Ukuran)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private java.util.List<ProductVariant> variants;
