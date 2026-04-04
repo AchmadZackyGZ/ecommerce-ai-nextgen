@@ -187,6 +187,10 @@ public class ProductService {
                 .imageUrl(product.getImageUrl())
                 .shopId(product.getShop().getId())
                 .shopName(product.getShop().getName())
+                .shopAvatar(null) // Kirim null agar React otomatis membuatkan Avatar AI
+                .shopRating(4.9) // Sementara kita set rating tinggi (Nanti bisa dihitung dari tabel Review)
+                .shopTotalProducts(15) // Jumlah produk toko
+                .shopJoinDate("2 Tahun Lalu") // Waktu bergabung
                 .variants(variantResponses) //  KITA SELIPKAN DATA VARIAN DI SINI!
                 .createdAt(product.getCreatedAt())
                 .build();
