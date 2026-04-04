@@ -20,4 +20,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     // 🔥 FITUR BARU: Mengecek apakah user sudah pernah mereview produk ini (Anti-Spam)
     boolean existsByProductAndUser(Product product, User user);
+
+    // 🔥 MENGHITUNG RATA-RATA BINTANG SELURUH PRODUK DI SATU TOKO
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(AVG(r.rating), 0.0) FROM Review r WHERE r.product.shop.id = :shopId")
+    Double getAverageRatingByShopId(@org.springframework.data.repository.query.Param("shopId") Long shopId);
 }
