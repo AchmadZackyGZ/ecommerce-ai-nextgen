@@ -32,6 +32,8 @@ public class Shop {
     // 🔥 RELASI 1: Satu Toko (Shop) dimiliki oleh Satu Penjual (User)
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude // Untuk menghindari infinite loop saat toString() karena relasi dua arah
+    @EqualsAndHashCode.Exclude // Untuk menghindari masalah saat membandingkan objek Shop karena relasi dua arah
     private User owner;
 
     @Column(updatable = false)
