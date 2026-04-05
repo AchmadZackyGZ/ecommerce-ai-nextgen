@@ -21,6 +21,8 @@ public class Cart {
     // 🔥 RELASI 1: Satu Keranjang HANYA milik Satu User (Customer/Seller)
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User user;
 
     // 🔥 RELASI 2: Satu Keranjang bisa berisi BANYAK Barang (CartItem)

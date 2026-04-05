@@ -18,11 +18,15 @@ public class CartItem {
     // 🔥 RELASI 1: Barang ini ada di dalam Keranjang siapa?
     @ManyToOne
     @JoinColumn(name = "cart_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Cart cart;
 
     // 🔥 RELASI 2: Barang (Varian) apa yang dibeli? (Evolusi V1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private ProductVariant variant;
 
     // 🔥 Berapa banyak barang yang dibeli?
