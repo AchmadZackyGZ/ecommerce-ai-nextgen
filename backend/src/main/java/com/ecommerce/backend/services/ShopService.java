@@ -9,7 +9,7 @@ import com.ecommerce.backend.models.ShopStatus;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.ShopRepository;
 import com.ecommerce.backend.repositories.UserRepository;
-import com.ecommerce.backend.services.CloudinaryService;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
