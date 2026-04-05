@@ -9,12 +9,14 @@ import com.ecommerce.backend.models.ShopStatus;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.ShopRepository;
 import com.ecommerce.backend.repositories.UserRepository;
+import com.ecommerce.backend.services.CloudinaryService;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ShopService {
@@ -25,8 +27,11 @@ public class ShopService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     // fitur untuk seller membuka toko baru 
-    public ShopResponse createShop(ShopRequest request, String ownerEmail) {
+    public ShopResponse createShop(ShopRequest request, String ownerEmail, MultipartFile image) {
         // 1. Cari data User (Seller) di database berdasarkan email dari token JWT
         User owner = userRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
@@ -41,11 +46,24 @@ public class ShopService {
             throw new BadRequestException("Nama toko sudah digunakan, silakan pilih nama lain.");
         }
 
+       // 🔥 LOGIKA AVATAR TOKO (CLOUDINARY vs DICEBEAR AI)
+        String finalAvatarUrl;
+        if (image != null && !image.isEmpty()) {
+            // Jika Seller rajin dan upload foto, kirim ke Cloudinary
+            finalAvatarUrl = cloudinaryService.uploadImage(image);
+        } else {
+            // Jika Seller malas, kita generate Avatar AI super keren berbasis nama toko mereka!
+            // Kita hilangkan spasinya agar URL Dicebear tidak error
+            String seedName = request.getName().replaceAll("\\s+", ""); 
+            finalAvatarUrl = "https://api.dicebear.com/7.x/bottts/svg?seed=" + seedName;
+        }
+
         // 4. Bangun Tokonya
         Shop shop = Shop.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .owner(owner)
+                .avatarUrl(finalAvatarUrl) // Set URL avatar yang sudah kita tentukan di atas
                 .status(ShopStatus.PENDING) // Set status awal ke PENDING, menunggu persetujuan admin
                 .build();
 
@@ -88,6 +106,7 @@ public class ShopService {
                 .description(shop.getDescription())
                 .ownerName(shop.getOwner().getName())
                 .status(shop.getStatus().name()) // Kembalikan statusnya ke Frontend
+                .avatarUrl(shop.getAvatarUrl())
                 .createdAt(shop.getCreatedAt())
                 .build();
     }

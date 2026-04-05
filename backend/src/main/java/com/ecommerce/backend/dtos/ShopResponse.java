@@ -12,6 +12,7 @@ public class ShopResponse {
     private String name;
     private String description;
     private String ownerName; // Nama pemilik toko
+    private String avatarUrl; // URL avatar toko (bisa dari Cloudinary atau Dicebear)
     private String status; // Status toko (PENDING, APPROVED, REJECTED)
     private LocalDateTime createdAt;
 }

@@ -9,10 +9,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 
-@RestController
+@RestController 
 @RequestMapping("/api/shops")
 public class ShopController {
 
@@ -23,13 +24,14 @@ public class ShopController {
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping
     public ResponseEntity<ApiResponse<ShopResponse>> createShop(
-            @RequestBody ShopRequest request,
+            @ModelAttribute ShopRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile image, // user tidak wajib menupload gambar saat buat toko
             Principal principal // 💡 INI FITUR SAKTI: Spring otomatis memberikan email user yang sedang login!
     ) {
         // Ambil email dari token JWT yang dikirim
-        String email = principal.getName(); 
+        String email = principal.getName();     
         
-        ShopResponse response = shopService.createShop(request, email);
+        ShopResponse response = shopService.createShop(request, email, image);
 
         ApiResponse<ShopResponse> apiResponse = ApiResponse.<ShopResponse>builder()
                 .status(HttpStatus.CREATED.value())
