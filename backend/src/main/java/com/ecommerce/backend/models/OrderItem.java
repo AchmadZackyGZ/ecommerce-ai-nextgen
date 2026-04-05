@@ -20,11 +20,15 @@ public class OrderItem {
     // Struk milik siapa?
     @ManyToOne // Banyak order item bisa masuk ke satu order
     @JoinColumn(name = "order_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Order order;
 
     // Barang (Varian) apa yang dibeli? (Evolusi V1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private ProductVariant variant;
 
     @Column(nullable = false)

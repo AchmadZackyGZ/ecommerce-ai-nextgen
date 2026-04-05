@@ -24,11 +24,15 @@ public class Order {
     // 🔥 PENTING: Relasi ke User, bukan hanya menyimpan userId. Kita butuh akses ke data user untuk berbagai keperluan (misal: nama pembeli di struk, email untuk notifikasi, dll).
     @ManyToOne // Banyak order bisa dibuat oleh satu user
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User user;
 
     // Alamat tujuan pengiriman (Evolusi V1: Relasi ke tabel Address)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Address shippingAddress;
 
     // Total harga barang (sebelum diskon)
@@ -65,6 +69,8 @@ public class Order {
     // 🔥 VOUCHER TRACKING: Mencatat voucher apa yang dipakai di transaksi ini (Boleh Null jika tidak pakai)
     @ManyToOne // Banyak order bisa menggunakan satu voucher yang sama
     @JoinColumn(name = "voucher_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Voucher voucher;
 
     // Daftar barang belanjaannya
