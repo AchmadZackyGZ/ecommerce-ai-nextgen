@@ -19,11 +19,15 @@ public class Review {
     // 🔥 Relasi ke Barang yang di-review
     @ManyToOne // Banyak review bisa untuk satu produk
     @JoinColumn(name = "product_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Product product;
 
     // 🔥 Relasi ke Customer yang memberikan review
     @ManyToOne // Banyak review bisa dari satu user
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User user;
 
     @Column(nullable = false)
