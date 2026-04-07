@@ -10,6 +10,8 @@ public class UserResponse {
     private Long id;
     private String name;
     private String email;
+    private String phone;
+    private String avatarUrl;
     private String role;
     // Password TIDAK kita masukkan di sini!
     private LocalDateTime createdAt;
