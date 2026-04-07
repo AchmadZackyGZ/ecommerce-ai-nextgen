@@ -23,6 +23,10 @@ public class User implements org.springframework.security.core.userdetails.UserD
     @Column(nullable = false)
     private String name;
 
+    private String phone;
+
+    private String avatarUrl;
+
     @Column(nullable = false, unique = true)
     private String email;
 
