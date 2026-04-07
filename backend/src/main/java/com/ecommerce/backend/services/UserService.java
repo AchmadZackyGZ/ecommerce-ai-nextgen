@@ -9,6 +9,7 @@ import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.backend.models.Cart;
 import com.ecommerce.backend.repositories.CartRepository;
@@ -24,6 +25,9 @@ public class UserService {
 
     @Autowired
     private CartRepository cartRepository; // Injecting CartRepository to create a cart for the user upon registration
+
+    @Autowired
+    private CloudinaryService cloudinaryService; // Injecting CloudinaryService to handle avatar uploads
 
     // Method to create a new user based on the UserRequest DTO
   public UserResponse registerUser(UserRequest request) {
@@ -64,6 +68,27 @@ public class UserService {
 
         // 4. Kembalikan balasan yang rapi
         return mapToResponse(savedUser); 
+    }
+
+    public User getCurrentUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User dengan email " + email + " tidak ditemukan!"));
+    }
+
+    // Update profil (Nama, HP, dan Avatar)
+    public User updateProfile(String email, String name, String phone, MultipartFile avatar) {
+        User user = getCurrentUser(email);
+        
+        if (name != null && !name.isEmpty()) user.setName(name);
+        if (phone != null && !phone.isEmpty()) user.setPhone(phone);
+        
+        // Logika Cloudinary untuk Foto Profil
+        if (avatar != null && !avatar.isEmpty()) {
+            String avatarUrl = cloudinaryService.uploadImage(avatar);
+            user.setAvatarUrl(avatarUrl);
+        }
+        
+        return userRepository.save(user);
     }
 
     // Fungsi bantuan (Helper) untuk mengubah Entity User menjadi DTO UserResponse
