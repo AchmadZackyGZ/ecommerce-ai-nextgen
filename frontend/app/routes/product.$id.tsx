@@ -163,14 +163,15 @@ export default function ProductDetail() {
     return r.rating === reviewFilter;
   });
 
-  // 🚧 DUMMY SHOP SEMENTARA (Menunggu Update API Produk dari Backend)
-  const DUMMY_SHOP = {
-    name: product?.shopName || "Nexia Official Store",
-    rating: 4.9,
-    totalProducts: 124,
-    joinDate: "2 Tahun Lalu",
-    responseRate: "98%",
-    avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=" + product?.shopName,
+  const shopData = {
+    name: product?.shopName || "Toko Nexia",
+    avatar:
+      product?.shopAvatar ||
+      `https://api.dicebear.com/7.x/shapes/svg?seed=${product?.shopName || "Nexia"}`,
+    rating: product?.shopRating ? Number(product.shopRating).toFixed(1) : "4.8",
+    totalProducts: product?.shopTotalProducts || 0,
+    joinDate: product?.shopJoinDate || "Baru Bergabung",
+    responseRate: product?.shopResponseRate || "90%",
   };
 
   if (isLoading) {
@@ -308,15 +309,13 @@ export default function ProductDetail() {
           <div className="flex items-center gap-6 w-full md:w-auto md:border-r border-white/10 md:pr-10">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-white/10 bg-black">
               <img
-                src={DUMMY_SHOP.avatar}
+                src={shopData.avatar}
                 alt="Avatar Toko"
                 className="h-full w-full object-cover"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <h3 className="text-lg font-black text-white">
-                {DUMMY_SHOP.name}
-              </h3>
+              <h3 className="text-lg font-black text-white">{shopData.name}</h3>
               <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
                 Aktif 2 Menit Lalu
@@ -336,26 +335,26 @@ export default function ProductDetail() {
             <div className="flex flex-col gap-1">
               <span className="text-zinc-500">Penilaian Toko</span>
               <span className="font-bold text-cyan-400">
-                {DUMMY_SHOP.rating}k{" "}
+                {shopData.rating}k{" "}
                 <span className="text-xs font-normal text-zinc-500">/ 5.0</span>
               </span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-zinc-500">Produk</span>
               <span className="font-bold text-cyan-400">
-                {DUMMY_SHOP.totalProducts}
+                {shopData.totalProducts}
               </span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-zinc-500">Performa Chat</span>
               <span className="font-bold text-cyan-400">
-                {DUMMY_SHOP.responseRate}
+                {shopData.responseRate}
               </span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-zinc-500">Bergabung</span>
               <span className="font-bold text-cyan-400">
-                {DUMMY_SHOP.joinDate}
+                {shopData.joinDate}
               </span>
             </div>
           </div>
