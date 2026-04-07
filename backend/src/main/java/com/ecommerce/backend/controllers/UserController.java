@@ -1,6 +1,7 @@
 package com.ecommerce.backend.controllers;
 
 import com.ecommerce.backend.dtos.ApiResponse;
+import com.ecommerce.backend.dtos.UserResponse; // 🔥 PASTIKAN IMPORT INI ADA
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,19 +18,39 @@ public class UserController {
     private UserService userService;
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<User>> getCurrentUser(Principal principal) {
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(Principal principal) {
         User user = userService.getCurrentUser(principal.getName());
-        return ResponseEntity.ok(ApiResponse.<User>builder().status(200).message("Data profil berhasil diambil").data(user).build());
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                .status(200)
+                .message("Data profil berhasil diambil")
+                .data(mapToResponse(user)) // 🔥 TRANSLATE DULU SEBELUM DIKIRIM!
+                .build());
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<ApiResponse<User>> updateProfile(
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String phone,
             @RequestParam(required = false) MultipartFile avatar,
             Principal principal) {
         
         User updatedUser = userService.updateProfile(principal.getName(), name, phone, avatar);
-        return ResponseEntity.ok(ApiResponse.<User>builder().status(200).message("Profil berhasil diperbarui!").data(updatedUser).build());
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                .status(200)
+                .message("Profil berhasil diperbarui!")
+                .data(mapToResponse(updatedUser)) // 🔥 TRANSLATE DULU SEBELUM DIKIRIM!
+                .build());
+    }
+
+    // 🔥 HELPER SAKTI: Mengubah Entity User menjadi DTO yang aman dari Infinite Loop
+    private UserResponse mapToResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
+                .build();
     }
 }
