@@ -17,10 +17,14 @@ import {
   Activity,
   X,
   Upload,
+  Home,
+  Briefcase,
+  Monitor,
+  Trash2,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
-import { apiClient } from "~/services/apiClient"; // 🔥 IMPORT API CLIENT
+import { apiClient } from "~/services/apiClient";
 
 export const meta = () =>
   generateMeta(
@@ -32,7 +36,6 @@ export default function AccountSettings() {
   const [activeTab, setActiveTab] = useState("Profil");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 📦 STATE DATA PROFIL DINAMIS
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [userData, setUserData] = useState({
@@ -41,18 +44,10 @@ export default function AccountSettings() {
     phone: "",
     avatarUrl: "",
   });
-  // State untuk file gambar baru yang akan diupload
   const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // State Modals & Notifikasi (Tetap sama)
-  const [notifyOrder, setNotifyOrder] = useState(true);
-  const [notifyPromo, setNotifyPromo] = useState(false);
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-
-  // 🚀 MENYEDOT DATA DARI BACKEND SAAT HALAMAN DIBUKA
+  // 🚀 FETCH DATA PROFIL (Tetap Hidup!)
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -67,7 +62,6 @@ export default function AccountSettings() {
         });
       } catch (error) {
         console.error("Gagal mengambil profil:", error);
-        toast.error("Gagal memuat profil. Pastikan Anda sudah login.");
       } finally {
         setIsLoading(false);
       }
@@ -75,38 +69,28 @@ export default function AccountSettings() {
     fetchUserData();
   }, []);
 
-  // 🖼️ HANDLER PILIH GAMBAR
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 2 * 1024 * 1024) {
-        // Batas 2MB
-        return toast.error("Ukuran gambar terlalu besar! Maksimal 2MB.");
-      }
+      if (file.size > 2 * 1024 * 1024)
+        return toast.error("Ukuran gambar maksimal 2MB.");
       setNewAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file)); // Buat URL lokal untuk preview cepat
+      setAvatarPreview(URL.createObjectURL(file));
     }
   };
 
-  // 💾 MESIN PENYIMPAN DATA (MENGIRIM KE BACKEND)
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsSaving(true);
-
-      // Menggunakan FormData karena kita berurusan dengan File (Sama seperti Postman form-data)
       const formData = new FormData();
       formData.append("name", userData.name);
       formData.append("phone", userData.phone);
-      if (newAvatarFile) {
-        formData.append("avatar", newAvatarFile);
-      }
+      if (newAvatarFile) formData.append("avatar", newAvatarFile);
 
       const res = await apiClient.put("/users/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
-      // Update state dengan data terbaru dari server
       const updatedUser = res.data.data;
       setUserData({
         name: updatedUser.name || "",
@@ -114,10 +98,8 @@ export default function AccountSettings() {
         phone: updatedUser.phone || "",
         avatarUrl: updatedUser.avatarUrl || "",
       });
-      setNewAvatarFile(null); // Reset file
-      toast.success(
-        res.data.message || "Profil berhasil diperbarui secara aman!",
-      );
+      setNewAvatarFile(null);
+      toast.success(res.data.message || "Profil berhasil diperbarui!");
     } catch (error: any) {
       toast.error(
         error.response?.data?.message || "Gagal menyimpan perubahan.",
@@ -127,27 +109,104 @@ export default function AccountSettings() {
     }
   };
 
-  // ... (Sisa fungsi handleSaveData lama untuk modal lainnya tetap sama)
-  const handleSaveData = (e: React.FormEvent, type: string) => {
-    e.preventDefault();
-    toast.success(`Data ${type} berhasil disimpan secara aman!`);
-    setIsAddressModalOpen(false);
-    setIsCardModalOpen(false);
-    setIsPasswordModalOpen(false);
-  };
-
   const currentAvatar =
     avatarPreview ||
     userData.avatarUrl ||
     `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`;
 
-  if (isLoading) {
+  // ==========================================
+  // 🚧 DUMMY DATA UNTUK UI FASE 3 (SHOWCASE)
+  // ==========================================
+  const dummyAddresses = [
+    {
+      id: 1,
+      label: "Rumah",
+      receiver: "Achmad Zacky",
+      phone: "081234567890",
+      fullAddress:
+        "Jl. Ketintang Baru No. 123, Gayungan, Surabaya, Jawa Timur 60231",
+      isMain: true,
+    },
+    {
+      id: 2,
+      label: "Kantor",
+      receiver: "Achmad Zacky (Resepsionis)",
+      phone: "081987654321",
+      fullAddress:
+        "Gedung Nexia Tower Lt. 5, Jl. Basuki Rahmat, Surabaya, Jawa Timur 60271",
+      isMain: false,
+    },
+  ];
+
+  const dummyCards = [
+    {
+      id: 1,
+      type: "visa",
+      number: "**** **** **** 4242",
+      expiry: "12/28",
+      bank: "BCA",
+    },
+    {
+      id: 2,
+      type: "mastercard",
+      number: "**** **** **** 5555",
+      expiry: "08/27",
+      bank: "Mandiri",
+    },
+  ];
+
+  const dummyNotifications = [
+    {
+      id: 1,
+      type: "promo",
+      title: "Voucher Cashback 50% Hampir Habis!",
+      desc: "Segera gunakan voucher Anda sebelum jam 23:59 malam ini.",
+      time: "2 jam lalu",
+      read: false,
+    },
+    {
+      id: 2,
+      type: "system",
+      title: "Login Baru Terdeteksi",
+      desc: "Akun Anda baru saja login dari perangkat Mac OS di Jakarta.",
+      time: "1 hari lalu",
+      read: true,
+    },
+    {
+      id: 3,
+      type: "chat",
+      title: "Pesan dari Zacky Premium Store",
+      desc: "'Halo kak, barangnya ready ya silakan diorder...'",
+      time: "3 hari lalu",
+      read: true,
+    },
+  ];
+
+  const dummyDevices = [
+    {
+      id: 1,
+      device: "Windows PC - Chrome",
+      location: "Surabaya, Indonesia",
+      time: "Sedang Aktif",
+      current: true,
+      icon: <Monitor size={20} />,
+    },
+    {
+      id: 2,
+      device: "iPhone 15 Pro - Safari",
+      location: "Surabaya, Indonesia",
+      time: "Kemarin, 14:30 WIB",
+      current: false,
+      icon: <Smartphone size={20} />,
+    },
+  ];
+
+  if (isLoading)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-400"></div>
       </div>
     );
-  }
 
   return (
     <main className="min-h-screen pb-40 pt-28 relative">
@@ -173,8 +232,6 @@ export default function AccountSettings() {
                   </span>
                 </div>
               </div>
-
-              {/* ... (Navigasi Sidebar Tetap Sama) ... */}
               <nav className="flex flex-col gap-2">
                 <Link
                   to="/pesanan"
@@ -225,7 +282,7 @@ export default function AccountSettings() {
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-all ${activeTab === tab ? "bg-zinc-800 text-white shadow-md" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
+                      className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-all ${activeTab === tab ? "bg-zinc-800 text-white shadow-md border border-white/10" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"}`}
                     >
                       {tab}
                     </button>
@@ -234,7 +291,7 @@ export default function AccountSettings() {
               </div>
             </div>
 
-            {/* --- TAB 1: PROFIL --- */}
+            {/* --- TAB 1: PROFIL (HIDUP / REAL DATA) --- */}
             {activeTab === "Profil" && (
               <form
                 onSubmit={handleSaveProfile}
@@ -245,9 +302,7 @@ export default function AccountSettings() {
                     <User className="text-cyan-400" size={20} /> Informasi
                     Pribadi
                   </h3>
-
                   <div className="flex flex-col-reverse md:flex-row gap-10">
-                    {/* Form Kiri */}
                     <div className="flex-1 grid grid-cols-1 gap-6">
                       <div className="flex flex-col gap-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">
@@ -259,7 +314,7 @@ export default function AccountSettings() {
                           onChange={(e) =>
                             setUserData({ ...userData, name: e.target.value })
                           }
-                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none transition-colors"
+                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
                           required
                         />
                       </div>
@@ -273,10 +328,6 @@ export default function AccountSettings() {
                           disabled
                           className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-emerald-400 font-medium cursor-not-allowed"
                         />
-                        <span className="text-[10px] text-zinc-500">
-                          Email identitas utama tidak dapat diubah demi
-                          keamanan.
-                        </span>
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-zinc-500">
@@ -289,26 +340,23 @@ export default function AccountSettings() {
                             setUserData({ ...userData, phone: e.target.value })
                           }
                           placeholder="Contoh: 081234567890"
-                          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none transition-colors"
+                          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
                         />
                       </div>
-
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-3.5 text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] w-max disabled:opacity-50"
+                        className="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-3.5 text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] w-max disabled:opacity-50"
                       >
                         {isSaving ? "Menyinkronkan..." : "Simpan Perubahan"}
                       </button>
                     </div>
-
-                    {/* Foto Kanan */}
                     <div className="w-full md:w-1/3 flex flex-col items-center border-b md:border-b-0 md:border-l border-white/10 pb-8 md:pb-0 md:pl-8 pt-4">
                       <div
                         className="relative group cursor-pointer mb-6"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-zinc-800 font-black text-white text-4xl shadow-[0_0_30px_rgba(6,182,212,0.15)] border-4 border-zinc-900 overflow-hidden">
+                        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-zinc-800 border-4 border-zinc-900 overflow-hidden">
                           <img
                             src={currentAvatar}
                             alt="Preview"
@@ -318,7 +366,6 @@ export default function AccountSettings() {
                         <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <Camera className="text-white" size={32} />
                         </div>
-                        {/* Hidden Input File */}
                         <input
                           type="file"
                           ref={fileInputRef}
@@ -334,44 +381,232 @@ export default function AccountSettings() {
                       >
                         <Upload size={16} /> Pilih Gambar
                       </button>
-                      <p className="text-[10px] text-zinc-500 text-center mt-3">
-                        Ukuran gambar: maks. 2 MB
-                        <br />
-                        Format: .JPEG, .PNG
-                      </p>
                     </div>
                   </div>
                 </div>
               </form>
             )}
 
-            {/* ... (TAB ALAMAT, NOTIFIKASI, KEAMANAN DAN MODALS LAMA ANDA TETAP SAMA SEPERTI KODE SEBELUMNYA) ... */}
-            {/* UNTUK MENGHEMAT RUANG, TAB LAINNYA SAMA PERSIS DENGAN DESAIN ANDA */}
+            {/* --- TAB 2: ALAMAT & KARTU (MOCKUP UI) --- */}
             {activeTab === "Alamat & Kartu" && (
-              <div className="animate-in fade-in duration-500 flex flex-col items-center justify-center py-20 rounded-3xl border border-white/10 bg-zinc-900/30 text-center">
-                <MapPin size={48} className="text-zinc-600 mb-4" />
-                <h3 className="text-xl font-bold text-white">Alamat & Kartu</h3>
-                <p className="text-zinc-500 mt-2 text-sm">
-                  Fitur Manajemen Alamat dan Kartu akan segera hadir.
-                </p>
+              <div className="animate-in fade-in duration-500 flex flex-col gap-6">
+                {/* Section Alamat */}
+                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <MapPin className="text-cyan-400" size={20} /> Alamat
+                      Pengiriman
+                    </h3>
+                    <button className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300">
+                      <Plus size={16} /> Tambah Alamat
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {dummyAddresses.map((addr) => (
+                      <div
+                        key={addr.id}
+                        className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/30 p-5 relative overflow-hidden group hover:border-cyan-500/30 transition-colors"
+                      >
+                        {addr.isMain && (
+                          <div className="absolute top-0 right-0 bg-cyan-500/20 text-cyan-400 text-[10px] font-black px-3 py-1 rounded-bl-xl border-b border-l border-cyan-500/30 uppercase tracking-widest">
+                            Utama
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-white font-bold text-sm">
+                          {addr.label === "Rumah" ? (
+                            <Home size={14} className="text-zinc-400" />
+                          ) : (
+                            <Briefcase size={14} className="text-zinc-400" />
+                          )}
+                          {addr.label}
+                        </div>
+                        <div className="flex flex-col text-sm text-zinc-400 mt-2">
+                          <span className="font-bold text-zinc-300">
+                            {addr.receiver}{" "}
+                            <span className="font-normal text-zinc-500">
+                              | {addr.phone}
+                            </span>
+                          </span>
+                          <span className="mt-1 leading-relaxed">
+                            {addr.fullAddress}
+                          </span>
+                        </div>
+                        <div className="flex gap-4 mt-3 pt-3 border-t border-white/5 text-sm font-bold">
+                          <button className="text-cyan-400 hover:text-cyan-300">
+                            Ubah
+                          </button>
+                          {!addr.isMain && (
+                            <button className="text-red-400 hover:text-red-300">
+                              Hapus
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section Kartu Kredit */}
+                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <CreditCard className="text-cyan-400" size={20} /> Kartu
+                      Kredit / Debit
+                    </h3>
+                    <button className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300">
+                      <Plus size={16} /> Tambah Kartu
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dummyCards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-black p-5 h-32 relative overflow-hidden group"
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="text-xl font-black italic text-zinc-400">
+                            {card.type.toUpperCase()}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-500">
+                            {card.bank}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <span className="text-lg font-mono text-zinc-300 tracking-widest">
+                            {card.number}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-500 border border-white/10 px-2 py-1 rounded-md">
+                            {card.expiry}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* --- TAB 3: NOTIFIKASI (MOCKUP UI) --- */}
             {activeTab === "Notifikasi" && (
-              <div className="animate-in fade-in duration-500 flex flex-col items-center justify-center py-20 rounded-3xl border border-white/10 bg-zinc-900/30 text-center">
-                <Bell size={48} className="text-zinc-600 mb-4" />
-                <h3 className="text-xl font-bold text-white">Notifikasi</h3>
-                <p className="text-zinc-500 mt-2 text-sm">
-                  Pengaturan Notifikasi akan segera hadir.
-                </p>
+              <div className="animate-in fade-in duration-500 rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Bell className="text-cyan-400" size={20} /> Pusat
+                    Notifikasi
+                  </h3>
+                  <button className="text-sm font-bold text-zinc-500 hover:text-white transition-colors">
+                    Tandai semua dibaca
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {dummyNotifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`flex gap-4 p-4 rounded-2xl transition-colors cursor-pointer border ${notif.read ? "bg-transparent border-transparent hover:bg-white/5" : "bg-cyan-500/5 border-cyan-500/20"}`}
+                    >
+                      <div className="mt-1">
+                        {notif.type === "promo" && (
+                          <Ticket size={24} className="text-rose-400" />
+                        )}
+                        {notif.type === "system" && (
+                          <Activity size={24} className="text-emerald-400" />
+                        )}
+                        {notif.type === "chat" && (
+                          <Bell size={24} className="text-cyan-400" />
+                        )}
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <div className="flex justify-between items-start">
+                          <h4
+                            className={`text-sm font-bold ${notif.read ? "text-zinc-300" : "text-white"}`}
+                          >
+                            {notif.title}
+                          </h4>
+                          <span className="text-[10px] text-zinc-500 whitespace-nowrap ml-2">
+                            {notif.time}
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                          {notif.desc}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* --- TAB 4: KEAMANAN (MOCKUP UI) --- */}
             {activeTab === "Keamanan" && (
-              <div className="animate-in fade-in duration-500 flex flex-col items-center justify-center py-20 rounded-3xl border border-white/10 bg-zinc-900/30 text-center">
-                <Lock size={48} className="text-zinc-600 mb-4" />
-                <h3 className="text-xl font-bold text-white">Keamanan Akun</h3>
-                <p className="text-zinc-500 mt-2 text-sm">
-                  Fitur Ganti Password akan segera hadir.
-                </p>
+              <div className="animate-in fade-in duration-500 flex flex-col gap-6">
+                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
+                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <Lock className="text-cyan-400" size={20} /> Ganti Kata
+                    Sandi
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="password"
+                      placeholder="Kata Sandi Saat Ini"
+                      className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Kata Sandi Baru"
+                      className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
+                    />
+                  </div>
+                  <button className="mt-4 rounded-xl bg-white/10 px-6 py-3 text-sm font-bold text-white hover:bg-white/20 transition-colors border border-white/5">
+                    Update Sandi
+                  </button>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <Activity className="text-emerald-400" size={20} />{" "}
+                    Aktivitas Login
+                  </h3>
+                  <p className="text-xs text-zinc-400 mb-6">
+                    Daftar perangkat yang saat ini sedang masuk ke akun Nexia
+                    Anda.
+                  </p>
+
+                  <div className="flex flex-col gap-4">
+                    {dummyDevices.map((dev) => (
+                      <div
+                        key={dev.id}
+                        className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-white/10">
+                            {dev.icon}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-white flex items-center gap-2">
+                              {dev.device}
+                              {dev.current && (
+                                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                  Perangkat Ini
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-xs text-zinc-500">
+                              {dev.location} • {dev.time}
+                            </span>
+                          </div>
+                        </div>
+                        {!dev.current && (
+                          <button className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button className="mt-6 w-full rounded-xl border border-red-500/30 bg-red-500/10 py-3 text-sm font-bold text-red-400 transition-colors hover:bg-red-500/20">
+                    Keluar dari semua perangkat lain
+                  </button>
+                </div>
               </div>
             )}
           </div>
