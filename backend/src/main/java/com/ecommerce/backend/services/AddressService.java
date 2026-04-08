@@ -76,6 +76,46 @@ public class AddressService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public AddressResponse updateAddress(Long addressId, AddressRequest request, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
+        
+        Address existingAddress = addressRepository.findById(addressId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alamat tidak ditemukan!"));
+        
+        // Pastikan alamat ini benar-benar milik user yang sedang login
+        if (!existingAddress.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Akses Ditolak! Ini bukan alamat Anda.");
+        }
+
+        boolean setAsPrimary = request.isPrimary();
+
+        // Jika alamat ini diubah menjadi utama, turunkan pangkat alamat lain
+        if (setAsPrimary && !existingAddress.isPrimary()) {
+            List<Address> allUserAddresses = addressRepository.findByUser(user);
+            allUserAddresses.forEach(addr -> {
+                if (addr.isPrimary()) addr.setPrimary(false);
+            });
+            addressRepository.saveAll(allUserAddresses);
+        }
+
+        // Update data-datanya
+        existingAddress.setRecipientName(request.getRecipientName());
+        existingAddress.setPhoneNumber(request.getPhoneNumber());
+        existingAddress.setProvince(request.getProvince());
+        existingAddress.setCity(request.getCity());
+        existingAddress.setDistrict(request.getDistrict());
+        existingAddress.setPostalCode(request.getPostalCode());
+        existingAddress.setStreetDetails(request.getStreetDetails());
+        existingAddress.setOtherDetails(request.getOtherDetails());
+        existingAddress.setLabel(request.getLabel());
+        existingAddress.setPrimary(setAsPrimary);
+
+        Address updatedAddress = addressRepository.save(existingAddress);
+        return mapToResponse(updatedAddress);
+    }
+
     // --- FITUR MENGHAPUS ALAMAT ---
     public void deleteAddress(Long addressId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
