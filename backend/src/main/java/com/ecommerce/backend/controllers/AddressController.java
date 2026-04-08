@@ -48,6 +48,23 @@ public class AddressController {
         return ResponseEntity.ok(response);
     }
 
+    // PUT: /api/addresses/{id} (Ubah Alamat)
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<AddressResponse>> updateAddress(
+            @PathVariable Long id,
+            @RequestBody AddressRequest request,
+            Principal principal) {
+        
+        AddressResponse responseData = addressService.updateAddress(id, request, principal.getName());
+        
+        ApiResponse<AddressResponse> response = ApiResponse.<AddressResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Alamat berhasil diperbarui!")
+                .data(responseData)
+                .build();
+        return ResponseEntity.ok(response);
+    }
+
     // DELETE: /api/addresses/{id} (Hapus Alamat)
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteAddress(
