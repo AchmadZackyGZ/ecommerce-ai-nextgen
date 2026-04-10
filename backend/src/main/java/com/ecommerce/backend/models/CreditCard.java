@@ -5,7 +5,10 @@ import lombok.*;
 
 @Entity
 @Table(name = "credit_cards")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class CreditCard {
 
     @Id
