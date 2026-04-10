@@ -29,13 +29,13 @@ apiClient.interceptors.request.use(
   },
 );
 
-// 🔥 SATPAM FRONTEND: Tangkap respon dari Backend
+//  Tangkap respon dari Backend
 apiClient.interceptors.response.use(
   (response) => {
     return response; // Jika sukses (200 OK), biarkan lewat
   },
   (error) => {
-    // JIKA BACKEND TERIAK 401 UNAUTHORIZED (Token Expired / Palsu)
+    // JIKA BACKEND 401 UNAUTHORIZED (Token Expired / Palsu)
     if (error.response && error.response.status === 401) {
       console.warn("Token Expired! Menendang user keluar...");
 

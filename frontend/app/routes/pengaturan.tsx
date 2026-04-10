@@ -15,12 +15,12 @@ import {
   Lock,
   Smartphone,
   Activity,
-  X,
   Upload,
   Home,
   Briefcase,
   Monitor,
   Trash2,
+  X,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
@@ -33,11 +33,14 @@ export const meta = () =>
   );
 
 export default function AccountSettings() {
-  const [activeTab, setActiveTab] = useState("Profil");
+  const [activeTab, setActiveTab] = useState("Profil"); // Default tab "Alamat & Kartu"
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 📦 STATE DATA GLOBAL
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // State Profil
   const [userData, setUserData] = useState({
     name: "",
     email: "",
@@ -47,33 +50,71 @@ export default function AccountSettings() {
   const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // 🚀 FETCH DATA PROFIL (Tetap Hidup!)
+  // State Alamat & Kartu Asli dari Backend
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [cards, setCards] = useState<any[]>([]);
+
+  // State Modals
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+
+  // State Form Alamat Baru
+  const [newAddress, setNewAddress] = useState({
+    label: "Rumah",
+    recipientName: "",
+    phoneNumber: "",
+    province: "",
+    city: "",
+    district: "",
+    postalCode: "",
+    streetDetails: "",
+    otherDetails: "",
+    isPrimary: false,
+  });
+
+  // State Form Kartu Baru (Simulator Midtrans)
+  const [newCard, setNewCard] = useState({
+    bankName: "BCA",
+    cardType: "VISA",
+    last4Digits: "",
+  });
+
+  //  FETCH SEMUA DATA (PROFIL, ALAMAT, KARTU)
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      const [userRes, addressRes, cardRes] = await Promise.all([
+        apiClient.get("/users/me"),
+        apiClient.get("/addresses"),
+        apiClient.get("/cards"),
+      ]);
+
+      const user = userRes.data.data;
+      setUserData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        avatarUrl: user.avatarUrl || "",
+      });
+      setAddresses(addressRes.data.data || []);
+      setCards(cardRes.data.data || []);
+    } catch (error) {
+      console.error("Gagal mengambil data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setIsLoading(true);
-        const res = await apiClient.get("/users/me");
-        const user = res.data.data;
-        setUserData({
-          name: user.name || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          avatarUrl: user.avatarUrl || "",
-        });
-      } catch (error) {
-        console.error("Gagal mengambil profil:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchUserData();
+    fetchAllData();
   }, []);
 
+  // --- HANDLER PROFIL ---
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 2 * 1024 * 1024)
-        return toast.error("Ukuran gambar maksimal 2MB.");
+      if (file.size > 10 * 1024 * 1024)
+        return toast.error("Ukuran gambar maksimal 10MB.");
       setNewAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
     }
@@ -99,13 +140,78 @@ export default function AccountSettings() {
         avatarUrl: updatedUser.avatarUrl || "",
       });
       setNewAvatarFile(null);
-      toast.success(res.data.message || "Profil berhasil diperbarui!");
+      toast.success("Profil berhasil diperbarui!");
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Gagal menyimpan perubahan.",
-      );
+      toast.error(error.response?.data?.message || "Gagal menyimpan profil.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // --- HANDLER ALAMAT ---
+  const handleAddAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSaving(true);
+      await apiClient.post("/addresses", newAddress);
+      toast.success("Alamat berhasil ditambahkan!");
+      setIsAddressModalOpen(false);
+      fetchAllData(); // Refresh data
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Gagal menambah alamat.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id: number) => {
+    if (!confirm("Yakin ingin menghapus alamat ini?")) return;
+    try {
+      await apiClient.delete(`/addresses/${id}`);
+      toast.success("Alamat dihapus.");
+      fetchAllData();
+    } catch (error: any) {
+      toast.error("Gagal menghapus alamat.");
+    }
+  };
+
+  // --- HANDLER KARTU KREDIT ---
+  const handleAddCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCard.last4Digits.length !== 4)
+      return toast.error("Masukkan 4 digit terakhir kartu dengan benar.");
+
+    try {
+      setIsSaving(true);
+      // SIMULASI RESPONSE MIDTRANS
+      const payload = {
+        bankName: newCard.bankName,
+        cardType: newCard.cardType,
+        maskedNumber: `**** **** **** ${newCard.last4Digits}`,
+        // TODO: Ganti dengan response midtrans yang sebenarnya saat integrasi fase 3
+        savedTokenId: `sim-token-${Date.now()}-${Math.random().toString(36).substring(7)}`, // Token Dummy
+      };
+
+      await apiClient.post("/cards", payload);
+      toast.success("Kartu berhasil disimpan dengan aman!");
+      setIsCardModalOpen(false);
+      setNewCard({ bankName: "BCA", cardType: "VISA", last4Digits: "" });
+      fetchAllData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Gagal menyimpan kartu.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCard = async (id: number) => {
+    if (!confirm("Yakin ingin menghapus kartu ini dari sistem?")) return;
+    try {
+      await apiClient.delete(`/cards/${id}`);
+      toast.success("Kartu berhasil dihapus.");
+      fetchAllData();
+    } catch (error: any) {
+      toast.error("Gagal menghapus kartu.");
     }
   };
 
@@ -113,93 +219,6 @@ export default function AccountSettings() {
     avatarPreview ||
     userData.avatarUrl ||
     `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`;
-
-  // ==========================================
-  // 🚧 DUMMY DATA UNTUK UI FASE 3 (SHOWCASE)
-  // ==========================================
-  const dummyAddresses = [
-    {
-      id: 1,
-      label: "Rumah",
-      receiver: "Achmad Zacky",
-      phone: "081234567890",
-      fullAddress:
-        "Jl. Ketintang Baru No. 123, Gayungan, Surabaya, Jawa Timur 60231",
-      isMain: true,
-    },
-    {
-      id: 2,
-      label: "Kantor",
-      receiver: "Achmad Zacky (Resepsionis)",
-      phone: "081987654321",
-      fullAddress:
-        "Gedung Nexia Tower Lt. 5, Jl. Basuki Rahmat, Surabaya, Jawa Timur 60271",
-      isMain: false,
-    },
-  ];
-
-  const dummyCards = [
-    {
-      id: 1,
-      type: "visa",
-      number: "**** **** **** 4242",
-      expiry: "12/28",
-      bank: "BCA",
-    },
-    {
-      id: 2,
-      type: "mastercard",
-      number: "**** **** **** 5555",
-      expiry: "08/27",
-      bank: "Mandiri",
-    },
-  ];
-
-  const dummyNotifications = [
-    {
-      id: 1,
-      type: "promo",
-      title: "Voucher Cashback 50% Hampir Habis!",
-      desc: "Segera gunakan voucher Anda sebelum jam 23:59 malam ini.",
-      time: "2 jam lalu",
-      read: false,
-    },
-    {
-      id: 2,
-      type: "system",
-      title: "Login Baru Terdeteksi",
-      desc: "Akun Anda baru saja login dari perangkat Mac OS di Jakarta.",
-      time: "1 hari lalu",
-      read: true,
-    },
-    {
-      id: 3,
-      type: "chat",
-      title: "Pesan dari Zacky Premium Store",
-      desc: "'Halo kak, barangnya ready ya silakan diorder...'",
-      time: "3 hari lalu",
-      read: true,
-    },
-  ];
-
-  const dummyDevices = [
-    {
-      id: 1,
-      device: "Windows PC - Chrome",
-      location: "Surabaya, Indonesia",
-      time: "Sedang Aktif",
-      current: true,
-      icon: <Monitor size={20} />,
-    },
-    {
-      id: 2,
-      device: "iPhone 15 Pro - Safari",
-      location: "Surabaya, Indonesia",
-      time: "Kemarin, 14:30 WIB",
-      current: false,
-      icon: <Smartphone size={20} />,
-    },
-  ];
 
   if (isLoading)
     return (
@@ -257,10 +276,7 @@ export default function AccountSettings() {
                     className="transition-transform group-hover:translate-x-1"
                   />
                 </Link>
-                <Link
-                  to="/pengaturan"
-                  className="group flex items-center justify-between rounded-xl bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-400 border border-cyan-500/20 transition-all"
-                >
+                <button className="group flex items-center justify-between rounded-xl bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-400 border border-cyan-500/20 transition-all">
                   <div className="flex items-center gap-3">
                     <Settings size={18} /> Pengaturan Akun
                   </div>
@@ -268,7 +284,7 @@ export default function AccountSettings() {
                     size={16}
                     className="transition-transform group-hover:translate-x-1"
                   />
-                </Link>
+                </button>
               </nav>
             </div>
           </div>
@@ -291,7 +307,7 @@ export default function AccountSettings() {
               </div>
             </div>
 
-            {/* --- TAB 1: PROFIL (HIDUP / REAL DATA) --- */}
+            {/* --- TAB 1: PROFIL --- */}
             {activeTab === "Profil" && (
               <form
                 onSubmit={handleSaveProfile}
@@ -348,7 +364,7 @@ export default function AccountSettings() {
                         disabled={isSaving}
                         className="mt-4 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-3.5 text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] w-max disabled:opacity-50"
                       >
-                        {isSaving ? "Menyinkronkan..." : "Simpan Perubahan"}
+                        {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
                       </button>
                     </div>
                     <div className="w-full md:w-1/3 flex flex-col items-center border-b md:border-b-0 md:border-l border-white/10 pb-8 md:pb-0 md:pl-8 pt-4">
@@ -387,63 +403,73 @@ export default function AccountSettings() {
               </form>
             )}
 
-            {/* --- TAB 2: ALAMAT & KARTU (MOCKUP UI) --- */}
+            {/* --- TAB 2: ALAMAT & KARTU (LIVE API) --- */}
             {activeTab === "Alamat & Kartu" && (
               <div className="animate-in fade-in duration-500 flex flex-col gap-6">
                 {/* Section Alamat */}
                 <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <MapPin className="text-cyan-400" size={20} /> Alamat
-                      Pengiriman
+                      <MapPin className="text-cyan-400" size={20} /> Buku Alamat
                     </h3>
-                    <button className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300">
+                    <button
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-4 py-2 rounded-lg"
+                    >
                       <Plus size={16} /> Tambah Alamat
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {dummyAddresses.map((addr) => (
-                      <div
-                        key={addr.id}
-                        className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/30 p-5 relative overflow-hidden group hover:border-cyan-500/30 transition-colors"
-                      >
-                        {addr.isMain && (
-                          <div className="absolute top-0 right-0 bg-cyan-500/20 text-cyan-400 text-[10px] font-black px-3 py-1 rounded-bl-xl border-b border-l border-cyan-500/30 uppercase tracking-widest">
-                            Utama
+                  {addresses.length === 0 ? (
+                    <p className="text-center text-zinc-500 py-6">
+                      Anda belum memiliki alamat tersimpan.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {addresses.map((addr) => (
+                        <div
+                          key={addr.id}
+                          className={`flex flex-col gap-2 rounded-2xl border bg-black/30 p-5 relative overflow-hidden group transition-colors ${addr.primary ? "border-cyan-500/50" : "border-white/10 hover:border-cyan-500/30"}`}
+                        >
+                          {addr.primary && (
+                            <div className="absolute top-0 right-0 bg-cyan-500 text-black text-[10px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-widest">
+                              Utama
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-white font-bold text-sm">
+                            {addr.label.toLowerCase().includes("rumah") ? (
+                              <Home size={14} className="text-zinc-400" />
+                            ) : (
+                              <Briefcase size={14} className="text-zinc-400" />
+                            )}
+                            {addr.label}
                           </div>
-                        )}
-                        <div className="flex items-center gap-2 text-white font-bold text-sm">
-                          {addr.label === "Rumah" ? (
-                            <Home size={14} className="text-zinc-400" />
-                          ) : (
-                            <Briefcase size={14} className="text-zinc-400" />
-                          )}
-                          {addr.label}
-                        </div>
-                        <div className="flex flex-col text-sm text-zinc-400 mt-2">
-                          <span className="font-bold text-zinc-300">
-                            {addr.receiver}{" "}
-                            <span className="font-normal text-zinc-500">
-                              | {addr.phone}
+                          <div className="flex flex-col text-sm text-zinc-400 mt-2">
+                            <span className="font-bold text-zinc-300">
+                              {addr.recipientName}{" "}
+                              <span className="font-normal text-zinc-500">
+                                | {addr.phoneNumber}
+                              </span>
                             </span>
-                          </span>
-                          <span className="mt-1 leading-relaxed">
-                            {addr.fullAddress}
-                          </span>
-                        </div>
-                        <div className="flex gap-4 mt-3 pt-3 border-t border-white/5 text-sm font-bold">
-                          <button className="text-cyan-400 hover:text-cyan-300">
-                            Ubah
-                          </button>
-                          {!addr.isMain && (
-                            <button className="text-red-400 hover:text-red-300">
-                              Hapus
+                            <span className="mt-1 leading-relaxed">
+                              {addr.streetDetails}, Kec. {addr.district},{" "}
+                              {addr.city}, {addr.province} {addr.postalCode}{" "}
+                              {addr.otherDetails
+                                ? `(${addr.otherDetails})`
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 mt-3 pt-3 border-t border-white/5 text-sm font-bold">
+                            <button
+                              onClick={() => handleDeleteAddress(addr.id)}
+                              className="text-red-400 hover:text-red-300 flex items-center gap-1"
+                            >
+                              <Trash2 size={14} /> Hapus
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Section Kartu Kredit */}
@@ -451,167 +477,370 @@ export default function AccountSettings() {
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                       <CreditCard className="text-cyan-400" size={20} /> Kartu
-                      Kredit / Debit
+                      Tersimpan (Maks 3)
                     </h3>
-                    <button className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300">
-                      <Plus size={16} /> Tambah Kartu
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dummyCards.map((card) => (
-                      <div
-                        key={card.id}
-                        className="flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-black p-5 h-32 relative overflow-hidden group"
+                    {cards.length < 3 && (
+                      <button
+                        onClick={() => setIsCardModalOpen(true)}
+                        className="flex items-center gap-1 text-sm font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-4 py-2 rounded-lg"
                       >
-                        <div className="flex justify-between items-start">
-                          <span className="text-xl font-black italic text-zinc-400">
-                            {card.type.toUpperCase()}
-                          </span>
-                          <span className="text-xs font-bold text-zinc-500">
-                            {card.bank}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <span className="text-lg font-mono text-zinc-300 tracking-widest">
-                            {card.number}
-                          </span>
-                          <span className="text-xs font-bold text-zinc-500 border border-white/10 px-2 py-1 rounded-md">
-                            {card.expiry}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                        <Plus size={16} /> Tambah Kartu
+                      </button>
+                    )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* --- TAB 3: NOTIFIKASI (MOCKUP UI) --- */}
-            {activeTab === "Notifikasi" && (
-              <div className="animate-in fade-in duration-500 rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Bell className="text-cyan-400" size={20} /> Pusat
-                    Notifikasi
-                  </h3>
-                  <button className="text-sm font-bold text-zinc-500 hover:text-white transition-colors">
-                    Tandai semua dibaca
-                  </button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {dummyNotifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`flex gap-4 p-4 rounded-2xl transition-colors cursor-pointer border ${notif.read ? "bg-transparent border-transparent hover:bg-white/5" : "bg-cyan-500/5 border-cyan-500/20"}`}
-                    >
-                      <div className="mt-1">
-                        {notif.type === "promo" && (
-                          <Ticket size={24} className="text-rose-400" />
-                        )}
-                        {notif.type === "system" && (
-                          <Activity size={24} className="text-emerald-400" />
-                        )}
-                        {notif.type === "chat" && (
-                          <Bell size={24} className="text-cyan-400" />
-                        )}
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <div className="flex justify-between items-start">
-                          <h4
-                            className={`text-sm font-bold ${notif.read ? "text-zinc-300" : "text-white"}`}
-                          >
-                            {notif.title}
-                          </h4>
-                          <span className="text-[10px] text-zinc-500 whitespace-nowrap ml-2">
-                            {notif.time}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                          {notif.desc}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* --- TAB 4: KEAMANAN (MOCKUP UI) --- */}
-            {activeTab === "Keamanan" && (
-              <div className="animate-in fade-in duration-500 flex flex-col gap-6">
-                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <Lock className="text-cyan-400" size={20} /> Ganti Kata
-                    Sandi
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input
-                      type="password"
-                      placeholder="Kata Sandi Saat Ini"
-                      className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Kata Sandi Baru"
-                      className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-cyan-500/50 outline-none"
-                    />
-                  </div>
-                  <button className="mt-4 rounded-xl bg-white/10 px-6 py-3 text-sm font-bold text-white hover:bg-white/20 transition-colors border border-white/5">
-                    Update Sandi
-                  </button>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 md:p-8 backdrop-blur-xl">
-                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                    <Activity className="text-emerald-400" size={20} />{" "}
-                    Aktivitas Login
-                  </h3>
-                  <p className="text-xs text-zinc-400 mb-6">
-                    Daftar perangkat yang saat ini sedang masuk ke akun Nexia
-                    Anda.
-                  </p>
-
-                  <div className="flex flex-col gap-4">
-                    {dummyDevices.map((dev) => (
-                      <div
-                        key={dev.id}
-                        className="flex items-center justify-between p-4 rounded-2xl bg-black/30 border border-white/5"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-white/10">
-                            {dev.icon}
+                  {cards.length === 0 ? (
+                    <p className="text-center text-zinc-500 py-6">
+                      Tidak ada kartu yang tersimpan.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {cards.map((card) => (
+                        <div
+                          key={card.id}
+                          className="flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-black p-5 h-36 relative overflow-hidden group shadow-xl"
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="text-xl font-black italic text-zinc-300">
+                              {card.cardType.toUpperCase()}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteCard(card.id)}
+                              className="text-zinc-500 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm font-bold text-white flex items-center gap-2">
-                              {dev.device}
-                              {dev.current && (
-                                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                  Perangkat Ini
-                                </span>
-                              )}
+                            <span className="text-xs font-bold text-zinc-500 mb-1">
+                              {card.bankName}
                             </span>
-                            <span className="text-xs text-zinc-500">
-                              {dev.location} • {dev.time}
+                            <span className="text-lg font-mono text-cyan-400 tracking-widest">
+                              {card.maskedNumber}
                             </span>
                           </div>
                         </div>
-                        {!dev.current && (
-                          <button className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                            <Trash2 size={18} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button className="mt-6 w-full rounded-xl border border-red-500/30 bg-red-500/10 py-3 text-sm font-bold text-red-400 transition-colors hover:bg-red-500/20">
-                    Keluar dari semua perangkat lain
-                  </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB NOTIFIKASI & KEAMANAN (Dibiarkan Dummy untuk Fase 3) */}
+            {activeTab === "Notifikasi" && (
+              <div className="p-10 text-center text-zinc-500">
+                <Bell size={48} className="mx-auto mb-4 opacity-20" />
+                Fitur Notifikasi segera hadir di Fase 3.
+              </div>
+            )}
+            {activeTab === "Keamanan" && (
+              <div className="p-10 text-center text-zinc-500">
+                <Lock size={48} className="mx-auto mb-4 opacity-20" />
+                Fitur Keamanan Login segera hadir di Fase 3.
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* 🔮 MODAL TAMBAH ALAMAT */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <form
+            onSubmit={handleAddAddress}
+            className="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden"
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <MapPin className="text-cyan-400" /> Tambah Alamat Baru
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(false)}
+                className="text-zinc-500 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Label (Cth: Rumah/Kantor)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.label}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, label: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Nama Penerima
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.recipientName}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      recipientName: e.target.value,
+                    })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Nomor HP
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={newAddress.phoneNumber}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      phoneNumber: e.target.value,
+                    })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Provinsi
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.province}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, province: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Kota/Kabupaten
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.city}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, city: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Kecamatan
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.district}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, district: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Kode Pos
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAddress.postalCode}
+                  onChange={(e) =>
+                    setNewAddress({ ...newAddress, postalCode: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-xs font-bold text-zinc-400">
+                  Detail Jalan / Gedung
+                </label>
+                <textarea
+                  required
+                  value={newAddress.streetDetails}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      streetDetails: e.target.value,
+                    })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 h-20"
+                ></textarea>
+              </div>
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-xs font-bold text-zinc-400">
+                  Patokan (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={newAddress.otherDetails}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      otherDetails: e.target.value,
+                    })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div className="flex items-center gap-2 md:col-span-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="isPrimary"
+                  checked={newAddress.isPrimary}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      isPrimary: e.target.checked,
+                    })
+                  }
+                  className="w-5 h-5 accent-cyan-500"
+                />
+                <label
+                  htmlFor="isPrimary"
+                  className="text-sm font-bold text-white cursor-pointer"
+                >
+                  Jadikan Alamat Utama
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(false)}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:bg-white/10"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50"
+              >
+                {isSaving ? "Menyimpan..." : "Simpan Alamat"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 🔮 MODAL SIMULATOR KARTU KREDIT (MIDTRANS DUMMY) */}
+      {isCardModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <form
+            onSubmit={handleAddCard}
+            className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl"
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard className="text-cyan-400" /> Simulator Midtrans
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCardModalOpen(false)}
+                className="text-zinc-500 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <p className="text-xs text-zinc-400 mb-6 bg-black/50 p-3 rounded-lg border border-white/5">
+              Ini adalah form simulasi. Di production, form ini akan digantikan
+              oleh pop-up iframe resmi dari Midtrans untuk keamanan PCI-DSS.
+            </p>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Pilih Bank
+                </label>
+                <select
+                  value={newCard.bankName}
+                  onChange={(e) =>
+                    setNewCard({ ...newCard, bankName: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                >
+                  <option value="BCA">BCA</option>
+                  <option value="Mandiri">Mandiri</option>
+                  <option value="BNI">BNI</option>
+                  <option value="BRI">BRI</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  Tipe Jaringan
+                </label>
+                <select
+                  value={newCard.cardType}
+                  onChange={(e) =>
+                    setNewCard({ ...newCard, cardType: e.target.value })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                >
+                  <option value="VISA">VISA</option>
+                  <option value="MASTERCARD">MASTERCARD</option>
+                  <option value="JCB">JCB</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-zinc-400">
+                  4 Digit Terakhir Kartu
+                </label>
+                <input
+                  type="text"
+                  maxLength={4}
+                  required
+                  placeholder="Cth: 4242"
+                  value={newCard.last4Digits}
+                  onChange={(e) =>
+                    setNewCard({
+                      ...newCard,
+                      last4Digits: e.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono tracking-widest text-lg"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCardModalOpen(false)}
+                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:bg-white/10"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50 flex items-center gap-2"
+              >
+                <ShieldCheck size={18} />{" "}
+                {isSaving ? "Menyimpan..." : "Simpan Aman"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }

@@ -31,6 +31,12 @@ export default function VoucherWallet() {
   // 🧠 STATE UNTUK MODAL VOUCHER
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
+  // state untuk ambil data imageUrlPreview
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [userData, setUserdata] = useState<any>({
+    avatarUrl: "",
+  });
+
   // 👑 STATE DINAMIS GLOBAL USER
   const user = useAuthStore((state: any) => state.user);
 
@@ -50,6 +56,19 @@ export default function VoucherWallet() {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  };
+
+  // fungsi fetch data imageUrl dari backend
+  const fetchUserData = async () => {
+    try {
+      const res = await apiClient.get("/users/me");
+      setUserdata(res.data.data);
+      setAvatarPreview(res.data.data.avatarUrl);
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || "Gagal memuat data pengguna.",
+      );
+    }
   };
 
   // 🔄 FUNGSI PENYEDOT DATA VOUCHER DARI POSTGRESQL
@@ -118,6 +137,7 @@ export default function VoucherWallet() {
 
   useEffect(() => {
     fetchVouchers();
+    fetchUserData();
   }, []);
 
   const renderVoucherIcon = (type: string) => {
@@ -133,6 +153,11 @@ export default function VoucherWallet() {
     }
   };
 
+  const currentAvatar =
+    avatarPreview ||
+    userData.avatarUrl ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`;
+
   return (
     <main className="min-h-screen pb-40 pt-28 relative">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
@@ -141,9 +166,16 @@ export default function VoucherWallet() {
           <div className="lg:col-span-1">
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-2xl shadow-2xl">
               <div className="flex items-center gap-4 border-b border-white/10 pb-6">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 font-bold text-white shadow-lg text-xl">
-                  {/* 🔥 NAMA INISIAL DINAMIS */}
-                  {user ? getInitial(user.name) : "NX"}
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-800 overflow-hidden shadow-lg border-2 border-white/10">
+                  {currentAvatar ? (
+                    <img
+                      src={currentAvatar}
+                      alt="Avatar"
+                      className="h-full w-full rounded-2xl object-cover"
+                    />
+                  ) : (
+                    getInitial(user?.name || "Guest")
+                  )}
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-base font-bold text-white leading-tight uppercase">
