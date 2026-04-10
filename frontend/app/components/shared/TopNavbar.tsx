@@ -24,6 +24,12 @@ export default function TopNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false); // State khusus untuk tap di Mobile
   const [cartCount, setCartCount] = useState(0); // state untuk cart count
 
+  // state untuk get imageUrlProfile
+  const [avatarPreview, setAvatarPreview] = useState<String | null>(null);
+  const [userData, setUserData] = useState<any>({
+    avatarUrl: "",
+  });
+
   // Fungsi menembak API untuk menghitung total kuantitas
   const fetchCartCount = async () => {
     try {
@@ -40,7 +46,19 @@ export default function TopNavbar() {
     }
   };
 
+  // Fungsi untuk mengambil data profile
+  const fetchUserData = async () => {
+    try {
+      const res = await apiClient.get("/users/me");
+      setUserData(res.data.data);
+      setAvatarPreview(res.data.data.avatarUrl);
+    } catch (error: any) {
+      console.error("Gagal memuat foto profil.");
+    }
+  };
+
   useEffect(() => {
+    fetchUserData();
     fetchCartCount(); // panggil function cartCount saat pertama kali dimuat halaman
 
     const handleCartUpdate = (e: any) => {
@@ -77,6 +95,11 @@ export default function TopNavbar() {
       setSearchQuery(""); // Bersihkan input setelah search
     }
   };
+
+  const currentAvatar =
+    avatarPreview ||
+    userData.avatarUrl ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`;
 
   return (
     <>
@@ -159,8 +182,16 @@ export default function TopNavbar() {
                 <div className="w-72 rounded-[2rem] border border-white/10 bg-zinc-900/90 p-3 backdrop-blur-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
                   {/* Header Profil Singkat */}
                   <div className="flex items-center gap-4 border-b border-white/10 p-3 pb-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-purple-600 font-black text-white shadow-lg text-lg">
-                      {user ? getInitial(user.name) : "NX"}
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-800 overflow-hidden shadow-lg border-2 border-white/10">
+                      {currentAvatar ? (
+                        <img
+                          src={currentAvatar}
+                          alt="Avatar"
+                          className="h-full w-full rounded-2xl object-cover"
+                        />
+                      ) : (
+                        getInitial(user?.name || "Guest")
+                      )}
                     </div>
                     <div className="flex flex-col">
                       <h3 className="text-base font-bold text-white leading-tight">

@@ -670,7 +670,7 @@ export default function AccountSettings() {
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-xs font-bold text-zinc-400">
-                  Detail Jalan / Gedung
+                  Detail Jalan ALAMAT ANDA / Gedung
                 </label>
                 <textarea
                   required

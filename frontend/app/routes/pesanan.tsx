@@ -34,8 +34,10 @@ export default function OrderDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 👑 STATE DINAMIS USER
+  // 👑 STATE DINAMIS USER & AVATAR (MENGGUNAKAN LOGIKA ANDA!)
   const user = useAuthStore((state: any) => state.user);
+  const [userData, setUserData] = useState<any>({ avatarUrl: "" });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // 🌟 STATE UNTUK MODAL REVIEW
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -82,8 +84,20 @@ export default function OrderDashboard() {
     }
   };
 
+  // 🔥 FUNGSI SEDOT AVATAR (BUATAN ANDA)
+  const fetchUserData = async () => {
+    try {
+      const res = await apiClient.get("/users/me");
+      setUserData(res.data.data);
+      setAvatarPreview(res.data.data.avatarUrl);
+    } catch (error: any) {
+      console.error("Gagal memuat foto profil.");
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
+    fetchUserData(); // Panggil di sini!
   }, []);
 
   // 💸 FUNGSI MELANJUTKAN PEMBAYARAN MIDTRANS
@@ -122,7 +136,7 @@ export default function OrderDashboard() {
     }
   };
 
-  // 🌟 FUNGSI MENGIRIM ULASAN KE BACKEND (MENYESUAIKAN DENGAN @RequestParam)
+  // 🌟 FUNGSI MENGIRIM ULASAN KE BACKEND
   const handleSubmitReview = async () => {
     if (!reviewForm.comment.trim()) {
       return toast.error("Silakan tulis pengalaman Anda tentang produk ini!");
@@ -131,15 +145,11 @@ export default function OrderDashboard() {
     try {
       setIsSubmittingReview(true);
 
-      // 🔥 RAKIT DATA SEBAGAI FORM-DATA (Bukan JSON)
       const formData = new FormData();
       formData.append("productId", reviewForm.productId);
       formData.append("rating", reviewForm.rating.toString());
       formData.append("comment", reviewForm.comment);
-      // Nanti jika ada fitur upload foto di React, tinggal tambahkan:
-      // formData.append("image", fileFoto);
 
-      // Tembakkan ke Backend Anda yang canggih itu!
       await apiClient.post("/reviews", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -162,7 +172,6 @@ export default function OrderDashboard() {
   // 🌟 FUNGSI MEMBUKA MODAL ULASAN
   const openReviewModal = (order: any) => {
     setSelectedOrderForReview(order);
-    // Otomatis pilih produk pertama dari pesanan tersebut
     if (order.items && order.items.length > 0) {
       setReviewForm({
         productId: order.items[0].productId.toString(),
@@ -241,6 +250,14 @@ export default function OrderDashboard() {
     return new Date(dateString).toLocaleDateString("id-ID", options);
   };
 
+  // 🔥 PENENTU GAMBAR AVATAR
+  const currentAvatar =
+    avatarPreview ||
+    userData.avatarUrl ||
+    (user?.name
+      ? `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`
+      : null);
+
   return (
     <main className="min-h-screen pb-40 pt-28">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
@@ -249,9 +266,21 @@ export default function OrderDashboard() {
           <div className="lg:col-span-1">
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-2xl shadow-2xl">
               <div className="flex items-center gap-4 border-b border-white/10 pb-6">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 font-bold text-white shadow-lg text-xl">
-                  {user ? getInitial(user.name) : "NX"}
+                {/* 🔥 AVATAR DINAMIS DISINI */}
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-800 overflow-hidden shadow-lg border-2 border-white/10">
+                  {currentAvatar ? (
+                    <img
+                      src={currentAvatar}
+                      alt="Avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-bold text-white text-xl">
+                      {getInitial(user?.name || "Guest")}
+                    </span>
+                  )}
                 </div>
+
                 <div className="flex flex-col">
                   <h2 className="text-base font-bold text-white leading-tight uppercase">
                     {user ? user.name : "Guest"}
@@ -477,7 +506,6 @@ export default function OrderDashboard() {
                             <button className="w-full md:w-auto rounded-xl border border-white/10 bg-transparent px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/5">
                               Beli Lagi
                             </button>
-                            {/* 🔥 FIX: TOMBOL TRIGGER MODAL REVIEW SUDAH NYALA! */}
                             <button
                               onClick={() => openReviewModal(order)}
                               className="w-full md:w-auto rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
