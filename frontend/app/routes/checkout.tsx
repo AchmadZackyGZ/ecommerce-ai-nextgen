@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Building,
   Check,
+  Home,
+  Briefcase,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
@@ -25,18 +27,17 @@ export const meta = () =>
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessingOrder, setIsProcessingOrder] = useState(false); // 🔥 State baru untuk tombol loading
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
-  // 🛒 State Keranjang
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [totalProductPrice, setTotalProductPrice] = useState(0);
 
-  // 📍 State Alamat Utama
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // 🔥 STATE FORM MODAL ALAMAT
+  // 🔥 STATE MODAL ALAMAT
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(false); // Mode Lihat vs Mode Tambah
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressLabel, setAddressLabel] = useState("Rumah");
   const [isPrimaryAddress, setIsPrimaryAddress] = useState(false);
@@ -51,12 +52,10 @@ export default function CheckoutPage() {
     otherDetails: "",
   });
 
-  // 🎫 State Voucher
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
-  // 📝 State Form Checkout
   const [sellerNote, setSellerNote] = useState("");
   const [shippingMethod, setShippingMethod] = useState("reguler");
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
@@ -65,7 +64,6 @@ export default function CheckoutPage() {
   const shippingCost = shippingMethod === "kargo" ? 35000 : 15000;
   const protectionFee = 1000;
 
-  // 🔥 LOGIKA DISKON BARU (Menyesuaikan dengan persentase dan batas maksimal dari Backend)
   let discountAmount = 0;
   if (selectedVoucher) {
     const calculatedDiscount =
@@ -104,38 +102,21 @@ export default function CheckoutPage() {
       logoUrl:
         "https://upload.wikimedia.org/wikipedia/commons/2/2e/BRI_2020.svg",
     },
-    {
-      id: "permata",
-      name: "Permata Virtual Account",
-      logoUrl:
-        "https://commons.wikimedia.org/wiki/Special:FilePath/Permata_Bank_(2024).svg",
-    },
-    {
-      id: "cimb",
-      name: "CIMB Niaga Virtual Account",
-      logoUrl:
-        "https://commons.wikimedia.org/wiki/Special:FilePath/CIMB_Niaga_logo.svg",
-    },
   ];
 
-  // 🚀 INJEKSI SCRIPT MIDTRANS SAAT HALAMAN DIMUAT
   useEffect(() => {
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
-
     const script = document.createElement("script");
     script.src = snapScript;
     script.setAttribute("data-client-key", clientKey);
     script.async = true;
-
     document.body.appendChild(script);
-
     return () => {
-      document.body.removeChild(script); // Bersihkan script jika pindah halaman
+      document.body.removeChild(script);
     };
   }, []);
 
-  // 🔄 FUNGSI MENGAMBIL DATA AWAL
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -154,7 +135,6 @@ export default function CheckoutPage() {
         const addressRes = await apiClient.get("/addresses");
         const addressList = addressRes.data.data || [];
         setAddresses(addressList);
-
         if (addressList.length > 0) {
           const primary =
             addressList.find((a: any) => a.isPrimary) || addressList[0];
@@ -167,13 +147,12 @@ export default function CheckoutPage() {
       try {
         const voucherRes = await apiClient.get("/vouchers/public");
         const allVouchers = voucherRes.data.data || [];
-
         const now = new Date();
-        const activeVouchers = allVouchers.filter(
-          (v: any) => new Date(v.expiredAt) >= now && v.quota > 0,
+        setVouchers(
+          allVouchers.filter(
+            (v: any) => new Date(v.expiredAt) >= now && v.quota > 0,
+          ),
         );
-
-        setVouchers(activeVouchers);
       } catch (voucherError) {
         setVouchers([]);
       }
@@ -199,7 +178,6 @@ export default function CheckoutPage() {
     ) {
       return toast.error("Harap isi semua kolom wajib!");
     }
-
     try {
       setIsSavingAddress(true);
       const payload = {
@@ -207,22 +185,10 @@ export default function CheckoutPage() {
         label: addressLabel,
         isPrimary: isPrimaryAddress,
       };
-      const res = await apiClient.post("/addresses", payload);
-      toast.success(res.data.message || "Alamat berhasil ditambahkan!");
-
-      setIsAddressModalOpen(false);
-      setNewAddress({
-        recipientName: "",
-        phoneNumber: "",
-        province: "",
-        city: "",
-        district: "",
-        postalCode: "",
-        streetDetails: "",
-        otherDetails: "",
-      });
-      setIsPrimaryAddress(false);
-      fetchData();
+      await apiClient.post("/addresses", payload);
+      toast.success("Alamat berhasil ditambahkan!");
+      setIsAddingNewAddress(false);
+      fetchData(); // Refresh address list
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Gagal menyimpan alamat.");
     } finally {
@@ -230,25 +196,18 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🔥 THE MAGIC FUNCTION: EKSEKUSI CHECKOUT & MIDTRANS
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
+    if (!selectedAddress)
       return toast.error(
         "Silakan tambahkan alamat pengiriman terlebih dahulu!",
       );
-    }
-
-    if (paymentMethod === "bank_transfer" && !selectedBank) {
-      return toast.error(
-        "Silakan pilih Bank tujuan untuk pembayaran Virtual Account.",
-      );
-    }
+    if (paymentMethod === "bank_transfer" && !selectedBank)
+      return toast.error("Silakan pilih Bank tujuan.");
 
     try {
       setIsProcessingOrder(true);
       toast.success("Mempersiapkan Gateway Pembayaran...");
 
-      // 1. Siapkan payload sesuai OrderRequest.java di Backend
       const payload = {
         addressId: selectedAddress.id,
         voucherCode: selectedVoucher ? selectedVoucher.code : null,
@@ -258,54 +217,43 @@ export default function CheckoutPage() {
         sellerNote: sellerNote,
       };
 
-      // 2. Tembak API Checkout
       const response = await apiClient.post("/orders/checkout", payload);
       const orderData = response.data.data;
 
-      // 3. Jika COD, langsung sukses!
       if (paymentMethod === "cod") {
         toast.success("Pesanan COD berhasil dibuat!");
-        navigate("/pesanan"); // Arahkan ke halaman daftar pesanan
-        return;
+        return navigate("/pesanan");
       }
 
-      // 4. Jika Bank Transfer, Panggil Midtrans Snap Pop-up!
       if (orderData.snapToken) {
-        // @ts-ignore (Mengabaikan error TypeScript karena window.snap adalah inject eksternal)
+        // @ts-ignore
         window.snap.pay(orderData.snapToken, {
-          onSuccess: function (result: any) {
+          onSuccess: function () {
             toast.success("Pembayaran berhasil diselesaikan!");
             navigate("/pesanan");
           },
-          onPending: function (result: any) {
-            toast.warning(
-              "Menunggu pembayaran Anda. Silakan cek status pesanan.",
-            );
+          onPending: function () {
+            toast.warning("Menunggu pembayaran Anda.");
             navigate("/pesanan");
           },
-          onError: function (result: any) {
+          onError: function () {
             toast.error("Pembayaran gagal diproses!");
             navigate("/pesanan");
           },
           onClose: function () {
-            toast.info(
-              "Anda menutup halaman sebelum menyelesaikan pembayaran.",
-            );
+            toast.info("Anda menutup halaman sebelum membayar.");
             navigate("/pesanan");
           },
         });
       }
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.message ||
-          "Gagal membuat pesanan. Silakan coba lagi.",
-      );
+      toast.error(error.response?.data?.message || "Gagal membuat pesanan.");
     } finally {
       setIsProcessingOrder(false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <main className="min-h-screen pb-40 pt-40 flex justify-center items-center">
         <span className="text-cyan-400 font-bold animate-pulse tracking-widest uppercase">
@@ -313,7 +261,6 @@ export default function CheckoutPage() {
         </span>
       </main>
     );
-  }
 
   return (
     <main className="min-h-screen pb-40 pt-28 relative">
@@ -321,11 +268,9 @@ export default function CheckoutPage() {
         <h1 className="mb-8 text-3xl font-black text-white md:text-4xl">
           Checkout Pesanan
         </h1>
-
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* 📝 AREA KIRI */}
           <div className="flex-1 flex flex-col gap-6">
-            {/* 📍 1. ALAMAT PENGIRIMAN */}
+            {/* 📍 ALAMAT PENGIRIMAN */}
             <div
               className={`relative overflow-hidden rounded-3xl border p-6 backdrop-blur-xl transition-all ${!selectedAddress ? "border-red-500/50 bg-red-500/5" : "border-white/10 bg-zinc-900/30 group hover:border-cyan-500/30"}`}
             >
@@ -380,13 +325,12 @@ export default function CheckoutPage() {
                   <h3 className="text-white font-bold mb-1">
                     Anda Belum Memiliki Alamat
                   </h3>
-                  <p className="text-sm text-zinc-400 mb-4">
-                    Silakan tambahkan alamat pengiriman untuk melanjutkan
-                    pesanan.
-                  </p>
                   <button
-                    onClick={() => setIsAddressModalOpen(true)}
-                    className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                    onClick={() => {
+                      setIsAddressModalOpen(true);
+                      setIsAddingNewAddress(true);
+                    }}
+                    className="mt-4 flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-3 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                   >
                     <PlusCircle size={18} /> Tambah Alamat Baru
                   </button>
@@ -394,7 +338,7 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* 📦 2. DAFTAR PRODUK & PESAN */}
+            {/* 📦 DAFTAR PRODUK */}
             <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
               <div className="flex items-center gap-2 text-white font-bold mb-6 border-b border-white/10 pb-4">
                 <Package size={20} className="text-purple-400" /> Produk Dipesan
@@ -403,15 +347,11 @@ export default function CheckoutPage() {
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4 items-start">
                     <div className="h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.productName}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-zinc-800 to-zinc-900"></div>
-                      )}
+                      <img
+                        src={item.imageUrl}
+                        alt={item.productName}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                     <div className="flex-1 flex flex-col">
                       <h3 className="text-sm font-bold text-white line-clamp-2">
@@ -442,7 +382,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 🚚 3. OPSI PENGIRIMAN */}
+            {/* 🚚 PENGIRIMAN */}
             <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl">
               <div className="flex items-center gap-2 text-white font-bold mb-4">
                 <Truck size={20} className="text-emerald-400" /> Opsi Pengiriman
@@ -489,7 +429,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 🎫 4. NEXIA VOUCHER */}
+            {/* 🎫 VOUCHER & 💳 PEMBAYARAN */}
             <div
               onClick={() => setIsVoucherModalOpen(true)}
               className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex items-center justify-between cursor-pointer group transition-all hover:border-cyan-500/50 hover:bg-white/5"
@@ -504,7 +444,7 @@ export default function CheckoutPage() {
               <div className="flex items-center gap-2">
                 {selectedVoucher ? (
                   <span className="text-sm font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
-                    - Rp {selectedVoucher.discountValue.toLocaleString("id-ID")}
+                    - Rp {discountAmount.toLocaleString("id-ID")}
                   </span>
                 ) : (
                   <span className="text-sm font-medium text-zinc-400 group-hover:text-white transition-colors">
@@ -518,8 +458,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 💳 5. METODE PEMBAYARAN */}
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex flex-col transition-all duration-300">
+            <div className="rounded-3xl border border-white/10 bg-zinc-900/30 p-6 backdrop-blur-xl flex flex-col">
               <div className="flex items-center gap-2 text-white font-bold mb-4">
                 <CreditCard size={20} className="text-orange-400" /> Metode
                 Pembayaran
@@ -624,7 +563,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* 💸 AREA KANAN: ORDER SUMMARY */}
+          {/* 💸 ORDER SUMMARY */}
           <div className="w-full lg:w-1/3 xl:w-1/4">
             <div className="sticky top-28 flex flex-col gap-6 rounded-3xl border border-white/10 bg-zinc-900/50 p-6 backdrop-blur-2xl shadow-2xl">
               <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4">
@@ -669,178 +608,253 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={!selectedAddress || isProcessingOrder}
-                className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 disabled:animate-pulse"
+                className="mt-4 flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 py-4 font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:grayscale disabled:animate-pulse"
               >
                 {isProcessingOrder
                   ? "Mempersiapkan Gateway..."
                   : "Buat Pesanan"}
               </button>
-              <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 mt-2">
-                <ShieldCheck size={12} /> Pembayaran aman dan terenkripsi.
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 📍 MODAL POP-UP TAMBAH ALAMAT BARU */}
+      {/* 📍 MODAL PILIH ATAU TAMBAH ALAMAT */}
       {isAddressModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-2xl rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
-              <h3 className="text-xl font-black text-white">Alamat Baru</h3>
+              <h3 className="text-xl font-black text-white">
+                {isAddingNewAddress ? "Alamat Baru" : "Pilih Alamat Pengiriman"}
+              </h3>
               <button
-                onClick={() => setIsAddressModalOpen(false)}
+                onClick={() => {
+                  setIsAddressModalOpen(false);
+                  setIsAddingNewAddress(false);
+                }}
                 className="text-zinc-500 hover:text-white transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Nama Lengkap"
-                  value={newAddress.recipientName}
-                  onChange={(e) =>
-                    setNewAddress({
-                      ...newAddress,
-                      recipientName: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-                <input
-                  type="tel"
-                  placeholder="Nomor Telepon"
-                  value={newAddress.phoneNumber}
-                  onChange={(e) =>
-                    setNewAddress({
-                      ...newAddress,
-                      phoneNumber: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <input
-                  type="text"
-                  placeholder="Provinsi"
-                  value={newAddress.province}
-                  onChange={(e) =>
-                    setNewAddress({ ...newAddress, province: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-                <input
-                  type="text"
-                  placeholder="Kota/Kab"
-                  value={newAddress.city}
-                  onChange={(e) =>
-                    setNewAddress({ ...newAddress, city: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-                <input
-                  type="text"
-                  placeholder="Kecamatan"
-                  value={newAddress.district}
-                  onChange={(e) =>
-                    setNewAddress({ ...newAddress, district: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-                <input
-                  type="text"
-                  placeholder="Kode Pos"
-                  value={newAddress.postalCode}
-                  onChange={(e) =>
-                    setNewAddress({ ...newAddress, postalCode: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="Nama Jalan, Gedung, No. Rumah"
-                value={newAddress.streetDetails}
-                onChange={(e) =>
-                  setNewAddress({
-                    ...newAddress,
-                    streetDetails: e.target.value,
-                  })
-                }
-                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-              />
-              <input
-                type="text"
-                placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan) - Opsional"
-                value={newAddress.otherDetails}
-                onChange={(e) =>
-                  setNewAddress({ ...newAddress, otherDetails: e.target.value })
-                }
-                className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
-              />
-              <div className="mt-2 flex flex-col gap-3">
-                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Tandai Sebagai:
-                </span>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setAddressLabel("Rumah")}
-                    className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Rumah" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
-                  >
-                    Rumah
-                  </button>
-                  <button
-                    onClick={() => setAddressLabel("Kantor")}
-                    className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Kantor" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
-                  >
-                    Kantor
-                  </button>
-                </div>
-              </div>
-              <label className="mt-4 flex cursor-pointer items-center gap-3 w-max">
-                <div
-                  className={`flex h-5 w-5 items-center justify-center rounded border ${isPrimaryAddress ? "border-cyan-400 bg-cyan-400" : "border-zinc-600"}`}
+
+            {!isAddingNewAddress ? (
+              // BUKU ALAMAT LIST
+              <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                {addresses.length === 0 ? (
+                  <p className="text-zinc-500 text-center py-4">
+                    Belum ada alamat tersimpan.
+                  </p>
+                ) : (
+                  addresses.map((addr: any) => (
+                    <label
+                      key={addr.id}
+                      className={`relative flex cursor-pointer gap-4 rounded-2xl border p-4 transition-all ${selectedAddress?.id === addr.id ? "border-cyan-400 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:border-white/30"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="addressSelect"
+                        className="sr-only"
+                        checked={selectedAddress?.id === addr.id}
+                        onChange={() => {
+                          setSelectedAddress(addr);
+                          setIsAddressModalOpen(false);
+                        }}
+                      />
+                      <div className="mt-1">
+                        <MapPin
+                          size={20}
+                          className={
+                            selectedAddress?.id === addr.id
+                              ? "text-cyan-400"
+                              : "text-zinc-500"
+                          }
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-white flex items-center gap-2">
+                          {addr.recipientName}
+                          <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] uppercase text-zinc-400">
+                            {addr.label}
+                          </span>
+                          {addr.isPrimary && (
+                            <span className="bg-emerald-500/20 px-2 py-0.5 rounded text-[10px] uppercase text-emerald-400">
+                              Utama
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-zinc-400 mt-1">
+                          {addr.phoneNumber}
+                        </span>
+                        <span className="text-sm text-zinc-300 mt-2 leading-relaxed">
+                          {addr.streetDetails}{" "}
+                          {addr.otherDetails && `(${addr.otherDetails})`}
+                          <br />
+                          {addr.district}, {addr.city}, {addr.province}{" "}
+                          {addr.postalCode}
+                        </span>
+                      </div>
+                    </label>
+                  ))
+                )}
+                <button
+                  onClick={() => setIsAddingNewAddress(true)}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-500/50 bg-cyan-500/5 py-4 font-bold text-cyan-400 hover:bg-cyan-500/10 transition-colors"
                 >
+                  <PlusCircle size={18} /> Tambah Alamat Baru
+                </button>
+              </div>
+            ) : (
+              // FORM TAMBAH ALAMAT
+              <div className="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                <button
+                  onClick={() => setIsAddingNewAddress(false)}
+                  className="text-sm text-zinc-400 hover:text-white flex items-center gap-1 mb-2"
+                >
+                  &larr; Kembali ke Daftar Alamat
+                </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={isPrimaryAddress}
-                    onChange={(e) => setIsPrimaryAddress(e.target.checked)}
+                    type="text"
+                    placeholder="Nama Lengkap"
+                    value={newAddress.recipientName}
+                    onChange={(e) =>
+                      setNewAddress({
+                        ...newAddress,
+                        recipientName: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
                   />
-                  {isPrimaryAddress && (
-                    <Check size={14} className="text-black font-bold" />
-                  )}
+                  <input
+                    type="tel"
+                    placeholder="Nomor Telepon"
+                    value={newAddress.phoneNumber}
+                    onChange={(e) =>
+                      setNewAddress({
+                        ...newAddress,
+                        phoneNumber: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                  />
                 </div>
-                <span className="text-sm font-medium text-zinc-300 select-none">
-                  Atur sebagai alamat utama
-                </span>
-              </label>
-            </div>
-            <div className="p-6 border-t border-white/10 bg-zinc-900/50 flex justify-end gap-3">
-              <button
-                onClick={() => setIsAddressModalOpen(false)}
-                disabled={isSavingAddress}
-                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveAddress}
-                disabled={isSavingAddress}
-                className="px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)] disabled:opacity-50 disabled:animate-pulse"
-              >
-                {isSavingAddress ? "Menyimpan..." : "Simpan Alamat"}
-              </button>
-            </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Provinsi"
+                    value={newAddress.province}
+                    onChange={(e) =>
+                      setNewAddress({ ...newAddress, province: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Kota/Kab"
+                    value={newAddress.city}
+                    onChange={(e) =>
+                      setNewAddress({ ...newAddress, city: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Kecamatan"
+                    value={newAddress.district}
+                    onChange={(e) =>
+                      setNewAddress({ ...newAddress, district: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Kode Pos"
+                    value={newAddress.postalCode}
+                    onChange={(e) =>
+                      setNewAddress({
+                        ...newAddress,
+                        postalCode: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Nama Jalan, Gedung, No. Rumah"
+                  value={newAddress.streetDetails}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      streetDetails: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <input
+                  type="text"
+                  placeholder="Detail Lainnya (Opsional)"
+                  value={newAddress.otherDetails}
+                  onChange={(e) =>
+                    setNewAddress({
+                      ...newAddress,
+                      otherDetails: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3.5 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600"
+                />
+                <div className="mt-2 flex flex-col gap-3">
+                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    Tandai Sebagai:
+                  </span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setAddressLabel("Rumah")}
+                      className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Rumah" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
+                    >
+                      Rumah
+                    </button>
+                    <button
+                      onClick={() => setAddressLabel("Kantor")}
+                      className={`rounded-xl py-3 text-sm font-bold transition-all border ${addressLabel === "Kantor" ? "border-cyan-400 text-cyan-400 bg-cyan-500/10" : "border-white/10 text-zinc-400 hover:text-white"}`}
+                    >
+                      Kantor
+                    </button>
+                  </div>
+                </div>
+                <label className="mt-4 flex cursor-pointer items-center gap-3 w-max">
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded border ${isPrimaryAddress ? "border-cyan-400 bg-cyan-400" : "border-zinc-600"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isPrimaryAddress}
+                      onChange={(e) => setIsPrimaryAddress(e.target.checked)}
+                    />
+                    {isPrimaryAddress && (
+                      <Check size={14} className="text-black font-bold" />
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-zinc-300 select-none">
+                    Atur sebagai alamat utama
+                  </span>
+                </label>
+                <button
+                  onClick={handleSaveAddress}
+                  disabled={isSavingAddress}
+                  className="mt-4 px-8 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 transition-colors disabled:opacity-50 w-full"
+                >
+                  {isSavingAddress ? "Menyimpan..." : "Simpan Alamat Baru"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 🎫 MODAL POP-UP VOUCHER NEXIA (Tetap Sama) */}
+      {/* 🎫 MODAL VOUCHER (Tetap Sama) */}
       {isVoucherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -855,18 +869,6 @@ export default function CheckoutPage() {
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 pb-2 border-b border-white/5">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Masukkan Kode Voucher..."
-                  className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500 placeholder:text-zinc-600 uppercase"
-                />
-                <button className="rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-black hover:bg-cyan-400 transition-colors">
-                  Terapkan
-                </button>
-              </div>
-            </div>
             <div className="p-6 flex flex-col gap-4 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden">
               {vouchers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -874,16 +876,6 @@ export default function CheckoutPage() {
                   <p className="text-white font-bold mb-1">
                     Voucher Anda Tidak Ada
                   </p>
-                  <p className="text-sm text-zinc-400 mb-4">
-                    Tambahkan atau klaim voucher agar belanja makin hemat!
-                  </p>
-                  <Link
-                    to="/voucher"
-                    className="text-cyan-400 text-sm font-bold hover:underline transition-all"
-                    onClick={() => setIsVoucherModalOpen(false)}
-                  >
-                    Cari Voucher Sekarang &rarr;
-                  </Link>
                 </div>
               ) : (
                 vouchers.map((voucher) => (
