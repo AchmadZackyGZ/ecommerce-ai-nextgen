@@ -72,12 +72,35 @@ export default function AccountSettings() {
     isPrimary: false,
   });
 
-  // State Form Kartu Baru (Simulator Midtrans)
+  // State Form Kartu Baru real data api midtrans
   const [newCard, setNewCard] = useState({
+    cardNumber: "",
+    expMonth: "",
+    expYear: "",
+    cvv: "",
     bankName: "BCA",
-    cardType: "VISA",
-    last4Digits: "",
   });
+
+  //  INJEKSI SCRIPT MIDTRANS API
+  useEffect(() => {
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+    if (!clientKey) {
+      console.error(
+        "MIDTRANS_CLIENT_KEY tidak ditemukan di environment variables.",
+      );
+      return;
+    }
+    const cardScript = document.createElement("script");
+    cardScript.src =
+      "https://api.midtrans.com/v2/assets/js/midtrans-new-3d.min.js";
+    cardScript.setAttribute("data-environment", "sandbox"); // Wajib sandbox
+    cardScript.setAttribute("data-client-key", clientKey);
+    document.body.appendChild(cardScript);
+
+    return () => {
+      document.body.removeChild(cardScript);
+    };
+  }, []);
 
   //  FETCH SEMUA DATA (PROFIL, ALAMAT, KARTU)
   const fetchAllData = async () => {
@@ -175,31 +198,65 @@ export default function AccountSettings() {
     }
   };
 
-  // --- HANDLER KARTU KREDIT ---
+  // --- HANDLER KARTU KREDIT (REAL MIDTRANS INTEGRATION) ---
   const handleAddCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newCard.last4Digits.length !== 4)
-      return toast.error("Masukkan 4 digit terakhir kartu dengan benar.");
+    if (newCard.cardNumber.length < 16)
+      return toast.error("Nomor kartu tidak valid.");
 
     try {
       setIsSaving(true);
-      // SIMULASI RESPONSE MIDTRANS
-      const payload = {
-        bankName: newCard.bankName,
-        cardType: newCard.cardType,
-        maskedNumber: `**** **** **** ${newCard.last4Digits}`,
-        // TODO: Ganti dengan response midtrans yang sebenarnya saat integrasi fase 3
-        savedTokenId: `sim-token-${Date.now()}-${Math.random().toString(36).substring(7)}`, // Token Dummy
-      };
+      toast.info("Memvalidasi kartu ke server Midtrans...");
 
-      await apiClient.post("/cards", payload);
-      toast.success("Kartu berhasil disimpan dengan aman!");
-      setIsCardModalOpen(false);
-      setNewCard({ bankName: "BCA", cardType: "VISA", last4Digits: "" });
-      fetchAllData();
+      // @ts-ignore (Mengabaikan error TypeScript karena MidtransNew3d berasal dari CDN)
+      window.MidtransNew3d.getCardToken(
+        {
+          card_number: newCard.cardNumber,
+          card_exp_month: newCard.expMonth,
+          card_exp_year: newCard.expYear,
+          card_cvv: newCard.cvv,
+        },
+        async function (response: any) {
+          if (response.status_code === "200") {
+            // Jika Midtrans setuju, tangkap Tokennya!
+            const payload = {
+              bankName: newCard.bankName,
+              cardType: response.bank || "VISA", // Tipe fallback
+              maskedNumber: response.masked_card, // Cth: 4811-1111-1111-1114
+              savedTokenId: response.saved_token_id, // TOKEN ASLI DARI MIDTRANS!
+            };
+
+            // Kirim Token ke Backend Spring Boot
+            try {
+              await apiClient.post("/cards", payload);
+              toast.success(
+                "Kartu berhasil diverifikasi dan disimpan dengan aman!",
+              );
+              setIsCardModalOpen(false);
+              setNewCard({
+                cardNumber: "",
+                expMonth: "",
+                expYear: "",
+                cvv: "",
+                bankName: "BCA",
+              });
+              fetchAllData();
+            } catch (backendError: any) {
+              toast.error(
+                backendError.response?.data?.message ||
+                  "Gagal menyimpan kartu.",
+              );
+            }
+          } else {
+            toast.error(
+              response.status_message || "Kartu ditolak oleh Midtrans.",
+            );
+          }
+          setIsSaving(false);
+        },
+      );
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Gagal menyimpan kartu.");
-    } finally {
+      toast.error("Terjadi kesalahan jaringan.");
       setIsSaving(false);
     }
   };
@@ -742,7 +799,7 @@ export default function AccountSettings() {
         </div>
       )}
 
-      {/* 🔮 MODAL SIMULATOR KARTU KREDIT (MIDTRANS DUMMY) */}
+      {/* 🔮 MODAL SIMULATOR KARTU KREDIT  */}
       {isCardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <form
@@ -786,38 +843,79 @@ export default function AccountSettings() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-zinc-400">
-                  Tipe Jaringan
-                </label>
-                <select
-                  value={newCard.cardType}
-                  onChange={(e) =>
-                    setNewCard({ ...newCard, cardType: e.target.value })
-                  }
-                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
-                >
-                  <option value="VISA">VISA</option>
-                  <option value="MASTERCARD">MASTERCARD</option>
-                  <option value="JCB">JCB</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-400">
-                  4 Digit Terakhir Kartu
+                  Nomor Kartu (16 Digit)
                 </label>
                 <input
                   type="text"
-                  maxLength={4}
+                  maxLength={16}
                   required
-                  placeholder="Cth: 4242"
-                  value={newCard.last4Digits}
+                  placeholder="Cth: 4811111111111114"
+                  value={newCard.cardNumber}
                   onChange={(e) =>
                     setNewCard({
                       ...newCard,
-                      last4Digits: e.target.value.replace(/\D/g, ""),
+                      cardNumber: e.target.value.replace(/\D/g, ""),
                     })
                   }
                   className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono tracking-widest text-lg"
                 />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-zinc-400">
+                    Bulan (MM)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    required
+                    placeholder="12"
+                    value={newCard.expMonth}
+                    onChange={(e) =>
+                      setNewCard({
+                        ...newCard,
+                        expMonth: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-zinc-400">
+                    Tahun (YYYY)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    required
+                    placeholder="2028"
+                    value={newCard.expYear}
+                    onChange={(e) =>
+                      setNewCard({
+                        ...newCard,
+                        expYear: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-zinc-400">CVV</label>
+                  <input
+                    type="password"
+                    maxLength={3}
+                    required
+                    placeholder="123"
+                    value={newCard.cvv}
+                    onChange={(e) =>
+                      setNewCard({
+                        ...newCard,
+                        cvv: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                  />
+                </div>
               </div>
             </div>
 
