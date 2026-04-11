@@ -88,8 +88,18 @@ public class OrderService {
             voucherRepository.save(validVoucher);
         }
 
-        // 4. Hitung Grand Total (Yang wajib dibayar)
-        BigDecimal grandTotal = subTotal.subtract(discount);
+       // 🔥 FIX FATAL: TAMBAHKAN ONGKOS KIRIM & BIAYA PROTEKSI SEBELUM MASUK MIDTRANS!
+       // NANTI BISA MENGGUNAKAN RAJA ONGKIR API UNTUK MENGHITUNG ONGKIR DYNAMIC BERDASARKAN ALAMAT & BERAT PRODUK
+        BigDecimal shippingCost = BigDecimal.ZERO;
+        if ("kargo".equalsIgnoreCase(request.getShippingMethod())) {
+            shippingCost = new BigDecimal("35000");
+        } else {
+            shippingCost = new BigDecimal("15000"); // reguler
+        }
+        BigDecimal protectionFee = new BigDecimal("1000");
+
+        // 4. Hitung Grand Total (Subtotal - Diskon + Ongkir + Proteksi)
+        BigDecimal grandTotal = subTotal.subtract(discount).add(shippingCost).add(protectionFee);
         if (grandTotal.compareTo(BigDecimal.ZERO) < 0) {
             grandTotal = BigDecimal.ZERO;
         }
@@ -104,10 +114,10 @@ public class OrderService {
                 .status(OrderStatus.PENDING)
                 .orderDate(LocalDateTime.now())
                 .voucher(validVoucher)
-                .shippingMethod(request.getShippingMethod()) // BARU
-                .paymentMethod(request.getPaymentMethod())   // BARU
-                .paymentBank(request.getPaymentBank())       // BARU
-                .sellerNote(request.getSellerNote())         // BARU
+                .shippingMethod(request.getShippingMethod()) 
+                .paymentMethod(request.getPaymentMethod())   
+                .paymentBank(request.getPaymentBank())       
+                .sellerNote(request.getSellerNote())         
                 .build();
         Order savedOrder = orderRepository.save(order);
 
