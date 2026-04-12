@@ -4,6 +4,8 @@ import com.ecommerce.backend.dtos.AuthRequest;
 import com.ecommerce.backend.dtos.AuthResponse;
 import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.models.User;
+import com.ecommerce.backend.models.UserDevice;
+import com.ecommerce.backend.repositories.UserDeviceRepository;
 import com.ecommerce.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,8 +24,11 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private UserDeviceRepository userDeviceRepository;
 
-    public AuthResponse login(AuthRequest request) {
+
+    public AuthResponse login(AuthRequest request, String ipAddress, String userAgent) {
         try {
             // 1. Suruh Satpam mengecek kecocokan email dan password
             authenticationManager.authenticate(
@@ -37,6 +42,15 @@ public class AuthService {
         // 2. Jika lolos, ambil data user
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new BadRequestException("User tidak ditemukan"));
+
+        // CATAT PERANGKAT YANG BARU SAJA LOGIN KE DATABASE!
+        UserDevice userDevice = UserDevice.builder()
+                .user(user)
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
+                .isActive(true) // meskipun saya tidak memanggil .isActive(), tapi karena di models UserDevice sudah saya set default = true, maka nilai isActive otomatis akan true saat dibuat baru di database
+                .build();
+        userDeviceRepository.save(userDevice);
 
         // 3. Cetak tiket JWT
         String jwtToken = jwtService.generateToken(user);
