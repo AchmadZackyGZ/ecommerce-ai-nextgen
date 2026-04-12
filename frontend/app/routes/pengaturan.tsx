@@ -85,6 +85,14 @@ export default function AccountSettings() {
     bankName: "BCA",
   });
 
+  // state untuk keamanan
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [devices, setDevices] = useState<any[]>([]);
+
   //  INJEKSI SCRIPT MIDTRANS API
   useEffect(() => {
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
@@ -114,10 +122,11 @@ export default function AccountSettings() {
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const [userRes, addressRes, cardRes] = await Promise.all([
+      const [userRes, addressRes, cardRes, devicesRes] = await Promise.all([
         apiClient.get("/users/me"),
         apiClient.get("/addresses"),
         apiClient.get("/cards"),
+        apiClient.get("/users/devices"),
       ]);
 
       const user = userRes.data.data;
@@ -129,6 +138,7 @@ export default function AccountSettings() {
       });
       setAddresses(addressRes.data.data || []);
       setCards(cardRes.data.data || []);
+      setDevices(devicesRes.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data:", error);
     } finally {
@@ -295,6 +305,36 @@ export default function AccountSettings() {
       fetchAllData();
     } catch (error: any) {
       toast.error("Gagal menghapus kartu.");
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      return toast.error("Konfirmasi password baru tidak cocok!");
+    }
+    if (passwordForm.newPassword.length < 6) {
+      return toast.error("Password baru minimal 6 karakter!");
+    }
+
+    try {
+      setIsSaving(true);
+      const payload = {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword,
+      };
+
+      const response = await apiClient.put("/users/password", payload);
+      toast.success(response.data.message || "Password berhasil diubah!");
+      setPasswordForm({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Gagal mengubah password.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -616,10 +656,164 @@ export default function AccountSettings() {
                 Fitur Notifikasi segera hadir di Fase 3.
               </div>
             )}
+            {/* TAB KEAMANAN (FASE 3) */}
             {activeTab === "Keamanan" && (
-              <div className="p-10 text-center text-zinc-500">
-                <Lock size={48} className="mx-auto mb-4 opacity-20" />
-                Fitur Keamanan Login segera hadir di Fase 3.
+              <div className="space-y-6 animate-in fade-in duration-500">
+                {/* --- 1. KOTAK GANTI PASSWORD --- */}
+                <div className="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-6 lg:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                      <Lock className="text-cyan-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">
+                        Ubah Password
+                      </h3>
+                      <p className="text-sm text-zinc-400">
+                        Pastikan akun Anda selalu aman.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        Password Lama
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={passwordForm.oldPassword}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            oldPassword: e.target.value,
+                          })
+                        }
+                        className="bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500"
+                        placeholder="Masukkan password saat ini"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                          Password Baru
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={passwordForm.newPassword}
+                          onChange={(e) =>
+                            setPasswordForm({
+                              ...passwordForm,
+                              newPassword: e.target.value,
+                            })
+                          }
+                          className="bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500"
+                          placeholder="Minimal 6 karakter"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                          Konfirmasi Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordForm({
+                              ...passwordForm,
+                              confirmPassword: e.target.value,
+                            })
+                          }
+                          className="bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500"
+                          placeholder="Ulangi password baru"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="px-6 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50 transition-colors"
+                      >
+                        {isSaving ? "Menyimpan..." : "Simpan Password Baru"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* --- 2. KOTAK PERANGKAT TERHUBUNG --- */}
+                <div className="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-6 lg:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                      <Smartphone className="text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">
+                        Perangkat Terhubung
+                      </h3>
+                      <p className="text-sm text-zinc-400">
+                        Daftar perangkat yang masuk ke akun Anda.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {devices.length === 0 ? (
+                      <p className="text-center text-zinc-500 py-6">
+                        Memuat data perangkat...
+                      </p>
+                    ) : (
+                      devices.map((device, index) => {
+                        const isMobile = device.userAgent
+                          .toLowerCase()
+                          .includes("mobile");
+                        const isCurrent = index === 0;
+                        return (
+                          <div
+                            key={device.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/10 bg-black/50"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
+                                {isMobile ? (
+                                  <Smartphone className="text-zinc-400" />
+                                ) : (
+                                  <Monitor className="text-zinc-400" />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-white flex items-center gap-2">
+                                  {device.userAgent.split(" ")[0]}{" "}
+                                  {isMobile ? "Mobile" : "Desktop"}
+                                  {isCurrent && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                                      Sekarang
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-sm text-zinc-400 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="flex items-center gap-1">
+                                    <MapPin size={12} /> IP: {device.ipAddress}
+                                  </span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Activity size={12} />{" "}
+                                    {new Date(device.lastLogin).toLocaleString(
+                                      "id-ID",
+                                    )}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
