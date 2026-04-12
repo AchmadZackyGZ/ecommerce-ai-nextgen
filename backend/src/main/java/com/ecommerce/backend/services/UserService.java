@@ -91,6 +91,22 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    // fitur keamanan untuk ganti password
+    public void changePassword(String email, String oldPassword, String newPassword) {
+        User user = getCurrentUser(email);
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BadRequestException("Password lama yang Anda masukkan salah!");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            throw new BadRequestException("Password baru tidak boleh sama dengan password lama!");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     // Fungsi bantuan (Helper) untuk mengubah Entity User menjadi DTO UserResponse
     // (PENTING: Kita tidak memasukkan password ke dalam response!)
     private UserResponse mapToResponse(User user) {
