@@ -15,8 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
-@RestController // INI YANG DICARI OLEH SPRING BOOT!
-@RequestMapping("/api/auth") // URL UTAMANYA
+@RestController 
+@RequestMapping("/api/auth") 
 public class AuthController {
 
     @Autowired
@@ -25,9 +25,22 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("/login") // INI RUANGANNYA!
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody AuthRequest request) {
-        AuthResponse authResponse = authService.login(request);
+   @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(
+            @RequestBody AuthRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+        // 1. Dapatkan IP Address (Cek proxy jika ada)
+        String ipAddress = httpRequest.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = httpRequest.getRemoteAddr();
+        }
+        
+        // 2. Dapatkan Info Browser & OS (User-Agent)
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        // 3. Lempar datanya ke AuthService
+        AuthResponse authResponse = authService.login(request, ipAddress, userAgent);
 
         ApiResponse<AuthResponse> response = ApiResponse.<AuthResponse>builder()
                 .status(HttpStatus.OK.value())
