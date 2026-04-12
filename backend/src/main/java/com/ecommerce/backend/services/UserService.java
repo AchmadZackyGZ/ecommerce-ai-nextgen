@@ -13,6 +13,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.backend.models.Cart;
 import com.ecommerce.backend.repositories.CartRepository;
+import com.ecommerce.backend.repositories.UserDeviceRepository;
+
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Service // Spring annotation to indicate that this class is a service component
 public class UserService {
@@ -28,6 +34,9 @@ public class UserService {
 
     @Autowired
     private CloudinaryService cloudinaryService; // Injecting CloudinaryService to handle avatar uploads
+
+    @Autowired
+    private UserDeviceRepository userDeviceRepository; // Injecting UserDeviceRepository to log user devices on login
 
     // Method to create a new user based on the UserRequest DTO
   public UserResponse registerUser(UserRequest request) {
@@ -105,6 +114,21 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    //  FITUR AMBIL DAFTAR PERANGKAT AKTIF
+    public List<Map<String, Object>> getUserDevices(String email) {
+        User user = getCurrentUser(email);
+        
+        return userDeviceRepository.findByUserAndIsActiveTrueOrderByLastLoginDesc(user).stream()
+                .map(device -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", device.getId());
+                    map.put("ipAddress", device.getIpAddress());
+                    map.put("userAgent", device.getUserAgent());
+                    map.put("lastLogin", device.getLastLogin());
+                    return map;
+                }).collect(Collectors.toList());
     }
 
     // Fungsi bantuan (Helper) untuk mengubah Entity User menjadi DTO UserResponse
