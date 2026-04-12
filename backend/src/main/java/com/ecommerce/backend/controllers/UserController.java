@@ -1,7 +1,8 @@
 package com.ecommerce.backend.controllers;
 
 import com.ecommerce.backend.dtos.ApiResponse;
-import com.ecommerce.backend.dtos.UserResponse; // 🔥 PASTIKAN IMPORT INI ADA
+import com.ecommerce.backend.dtos.UserResponse;
+import com.ecommerce.backend.dtos.ChangePasswordRequest;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,21 @@ public class UserController {
                 .data(mapToResponse(updatedUser)) // 🔥 TRANSLATE DULU SEBELUM DIKIRIM!
                 .build());
     }
+
+    @PutMapping("/password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            Principal principal) {
+        
+        userService.changePassword(principal.getName(), request.getOldPassword(), request.getNewPassword());
+        
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(200)
+                .message("Keamanan akun diperbarui! Password berhasil diubah.")
+                .data(null)
+                .build());
+    }
+
 
     // 🔥 HELPER SAKTI: Mengubah Entity User menjadi DTO yang aman dari Infinite Loop
     private UserResponse mapToResponse(User user) {
