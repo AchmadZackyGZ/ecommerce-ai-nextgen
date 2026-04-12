@@ -25,6 +25,7 @@ import {
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
 import { apiClient } from "~/services/apiClient";
+import { useAuthStore } from "~/store/authStore";
 
 export const meta = () =>
   generateMeta(
@@ -39,6 +40,9 @@ export default function AccountSettings() {
   // 📦 STATE DATA GLOBAL
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  //  STATE DINAMIS DARI DATABASE
+  const user = useAuthStore((state: any) => state.user);
 
   // State Profil
   const [userData, setUserData] = useState({
@@ -84,22 +88,26 @@ export default function AccountSettings() {
   //  INJEKSI SCRIPT MIDTRANS API
   useEffect(() => {
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
-    if (!clientKey) {
-      console.error(
-        "MIDTRANS_CLIENT_KEY tidak ditemukan di environment variables.",
-      );
-      return;
-    }
-    const cardScript = document.createElement("script");
-    cardScript.src =
-      "https://api.midtrans.com/v2/assets/js/midtrans-new-3d.min.js";
-    cardScript.setAttribute("data-environment", "sandbox"); // Wajib sandbox
-    cardScript.setAttribute("data-client-key", clientKey);
-    document.body.appendChild(cardScript);
+    const scriptId = "midtrans-script";
 
-    return () => {
-      document.body.removeChild(cardScript);
-    };
+    // 1. Cek apakah script sudah ada (Mencegah bentrok dengan React Strict Mode)
+    let cardScript = document.getElementById(
+      scriptId,
+    ) as HTMLScriptElement | null;
+
+    if (!cardScript) {
+      cardScript = document.createElement("script");
+      cardScript.id = scriptId; // 🔥 KUNCI UTAMA: Midtrans MENCARI ID INI!
+      cardScript.src =
+        "https://api.midtrans.com/v2/assets/js/midtrans-new-3ds.min.js";
+      cardScript.setAttribute("data-environment", "sandbox");
+      cardScript.setAttribute("data-client-key", clientKey);
+      cardScript.async = true;
+      document.body.appendChild(cardScript);
+    }
+
+    // 🔥 PENTING: Kita sengaja TIDAK menghapus script di return cleanup
+    // Agar Midtrans tidak terbunuh di tengah jalan oleh React Strict Mode.
   }, []);
 
   //  FETCH SEMUA DATA (PROFIL, ALAMAT, KARTU)
@@ -204,61 +212,79 @@ export default function AccountSettings() {
     if (newCard.cardNumber.length < 16)
       return toast.error("Nomor kartu tidak valid.");
 
-    try {
-      setIsSaving(true);
-      toast.info("Memvalidasi kartu ke server Midtrans...");
+    // @ts-ignore
+    if (typeof window.MidtransNew3ds === "undefined") {
+      return toast.error(
+        "Sistem keamanan Midtrans sedang dimuat. Harap tunggu sebentar.",
+      );
+    }
 
-      // @ts-ignore (Mengabaikan error TypeScript karena MidtransNew3d berasal dari CDN)
-      window.MidtransNew3d.getCardToken(
-        {
-          card_number: newCard.cardNumber,
-          card_exp_month: newCard.expMonth,
-          card_exp_year: newCard.expYear,
-          card_cvv: newCard.cvv,
-        },
-        async function (response: any) {
-          if (response.status_code === "200") {
-            // Jika Midtrans setuju, tangkap Tokennya!
+    setIsSaving(true);
+    toast.info("Memverifikasi keamanan kartu Anda...");
+
+    // @ts-ignore
+    window.MidtransNew3ds.getCardToken(
+      {
+        card_number: newCard.cardNumber,
+        card_exp_month: newCard.expMonth,
+        card_exp_year: newCard.expYear,
+        card_cvv: newCard.cvv,
+      },
+      //  Gunakan Object { onSuccess, onFailure } untuk versi 3DS!
+      {
+        onSuccess: async function (response: any) {
+          try {
+            const finalToken = response.saved_token_id || response.token_id;
+
+            if (!finalToken) {
+              toast.error(
+                "Midtrans gagal memberikan Token Keamanan. Coba gunakan kartu lain.",
+              );
+              return;
+            }
+
             const payload = {
               bankName: newCard.bankName,
-              cardType: response.bank || "VISA", // Tipe fallback
-              maskedNumber: response.masked_card, // Cth: 4811-1111-1111-1114
-              savedTokenId: response.saved_token_id, // TOKEN ASLI DARI MIDTRANS!
+              cardType: "Kredit",
+              maskedNumber:
+                response.masked_card ||
+                `**** **** **** ${newCard.cardNumber.slice(-4)}`,
+              savedTokenId: finalToken,
             };
 
-            // Kirim Token ke Backend Spring Boot
-            try {
-              await apiClient.post("/cards", payload);
-              toast.success(
-                "Kartu berhasil diverifikasi dan disimpan dengan aman!",
-              );
-              setIsCardModalOpen(false);
-              setNewCard({
-                cardNumber: "",
-                expMonth: "",
-                expYear: "",
-                cvv: "",
-                bankName: "BCA",
-              });
-              fetchAllData();
-            } catch (backendError: any) {
-              toast.error(
-                backendError.response?.data?.message ||
-                  "Gagal menyimpan kartu.",
-              );
-            }
-          } else {
+            //  SEKARANG, REACT PASTI AKAN MENEMBAK POST INI!
+            await apiClient.post("/cards", payload);
+
+            toast.success("Kartu berhasil diverifikasi dan berhasil disimpan");
+            setIsCardModalOpen(false);
+            setNewCard({
+              cardNumber: "",
+              expMonth: "",
+              expYear: "",
+              cvv: "",
+              bankName: "BCA",
+            });
+            fetchAllData();
+          } catch (backendError: any) {
+            console.error("Backend Error:", backendError);
             toast.error(
-              response.status_message || "Kartu ditolak oleh Midtrans.",
+              backendError.response?.data?.message ||
+                "Gagal menyimpan kartu di sistem Nexia. Cek terminal Spring Boot Anda.",
             );
+          } finally {
+            setIsSaving(false);
           }
+        },
+        onFailure: function (response: any) {
+          console.error("Midtrans Error:", response);
+          toast.error(
+            response.status_message ||
+              "Kartu ditolak oleh sistem keamanan bank.",
+          );
           setIsSaving(false);
         },
-      );
-    } catch (error: any) {
-      toast.error("Terjadi kesalahan jaringan.");
-      setIsSaving(false);
-    }
+      },
+    );
   };
 
   const handleDeleteCard = async (id: number) => {
@@ -304,7 +330,7 @@ export default function AccountSettings() {
                     {userData.name || "Customer Nexia"}
                   </h2>
                   <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-cyan-400">
-                    <ShieldCheck size={14} /> Nexia Elite Member
+                    <ShieldCheck size={14} /> {user?.role || "Member"}
                   </span>
                 </div>
               </div>
@@ -799,41 +825,46 @@ export default function AccountSettings() {
         </div>
       )}
 
-      {/* 🔮 MODAL SIMULATOR KARTU KREDIT  */}
+      {/* 💳 MODAL TAMBAH KARTU KREDIT (ENTERPRISE UI) */}
       {isCardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <form
             onSubmit={handleAddCard}
-            className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl"
+            className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 duration-200"
           >
             <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <CreditCard className="text-cyan-400" /> Simulator Midtrans
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <CreditCard className="text-cyan-400" /> Tambah Kartu Baru
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCardModalOpen(false)}
-                className="text-zinc-500 hover:text-white"
+                className="text-zinc-500 hover:text-white transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
-            <p className="text-xs text-zinc-400 mb-6 bg-black/50 p-3 rounded-lg border border-white/5">
-              Ini adalah form simulasi. Di production, form ini akan digantikan
-              oleh pop-up iframe resmi dari Midtrans untuk keamanan PCI-DSS.
-            </p>
+
+            {/* SECURITY TRUST BADGE */}
+            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-6">
+              <ShieldCheck size={24} className="text-emerald-400 shrink-0" />
+              <p className="text-[11px] text-emerald-400/90 leading-tight">
+                Informasi kartu Anda dilindungi oleh enkripsi PCI-DSS tingkat
+                bank dan tidak disimpan secara mentah di server kami.
+              </p>
+            </div>
 
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-400">
-                  Pilih Bank
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  Nama Bank
                 </label>
                 <select
                   value={newCard.bankName}
                   onChange={(e) =>
                     setNewCard({ ...newCard, bankName: e.target.value })
                   }
-                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500"
+                  className="bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500 appearance-none cursor-pointer"
                 >
                   <option value="BCA">BCA</option>
                   <option value="Mandiri">Mandiri</option>
@@ -841,71 +872,77 @@ export default function AccountSettings() {
                   <option value="BRI">BRI</option>
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-zinc-400">
-                  Nomor Kartu (16 Digit)
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  Nomor Kartu
                 </label>
-                <input
-                  type="text"
-                  maxLength={16}
-                  required
-                  placeholder="Cth: 4811111111111114"
-                  value={newCard.cardNumber}
-                  onChange={(e) =>
-                    setNewCard({
-                      ...newCard,
-                      cardNumber: e.target.value.replace(/\D/g, ""),
-                    })
-                  }
-                  className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono tracking-widest text-lg"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    maxLength={16}
+                    required
+                    placeholder="0000 0000 0000 0000"
+                    value={newCard.cardNumber}
+                    onChange={(e) =>
+                      setNewCard({
+                        ...newCard,
+                        cardNumber: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    className="w-full bg-black/50 border border-white/10 p-3.5 pl-10 rounded-xl text-white outline-none focus:border-cyan-500 font-mono tracking-widest"
+                  />
+                  <CreditCard
+                    size={18}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-zinc-400">
-                    Bulan (MM)
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                    Masa Berlaku
                   </label>
-                  <input
-                    type="text"
-                    maxLength={2}
-                    required
-                    placeholder="12"
-                    value={newCard.expMonth}
-                    onChange={(e) =>
-                      setNewCard({
-                        ...newCard,
-                        expMonth: e.target.value.replace(/\D/g, ""),
-                      })
-                    }
-                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={2}
+                      required
+                      placeholder="MM"
+                      value={newCard.expMonth}
+                      onChange={(e) =>
+                        setNewCard({
+                          ...newCard,
+                          expMonth: e.target.value.replace(/\D/g, ""),
+                        })
+                      }
+                      className="w-full bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                    />
+                    <span className="text-zinc-500 font-bold">/</span>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      required
+                      placeholder="YYYY"
+                      value={newCard.expYear}
+                      onChange={(e) =>
+                        setNewCard({
+                          ...newCard,
+                          expYear: e.target.value.replace(/\D/g, ""),
+                        })
+                      }
+                      className="w-full bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-zinc-400">
-                    Tahun (YYYY)
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                    CVV
                   </label>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    required
-                    placeholder="2028"
-                    value={newCard.expYear}
-                    onChange={(e) =>
-                      setNewCard({
-                        ...newCard,
-                        expYear: e.target.value.replace(/\D/g, ""),
-                      })
-                    }
-                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-zinc-400">CVV</label>
                   <input
                     type="password"
                     maxLength={3}
                     required
-                    placeholder="123"
+                    placeholder="•••"
                     value={newCard.cvv}
                     onChange={(e) =>
                       setNewCard({
@@ -913,7 +950,7 @@ export default function AccountSettings() {
                         cvv: e.target.value.replace(/\D/g, ""),
                       })
                     }
-                    className="bg-black border border-white/10 p-3 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center"
+                    className="w-full bg-black/50 border border-white/10 p-3.5 rounded-xl text-white outline-none focus:border-cyan-500 font-mono text-center tracking-widest"
                   />
                 </div>
               </div>
@@ -923,17 +960,22 @@ export default function AccountSettings() {
               <button
                 type="button"
                 onClick={() => setIsCardModalOpen(false)}
-                className="px-6 py-3 rounded-xl font-bold text-zinc-400 hover:bg-white/10"
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-3 rounded-xl font-bold bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50 transition-transform hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-2"
               >
-                <ShieldCheck size={18} />{" "}
-                {isSaving ? "Menyimpan..." : "Simpan Aman"}
+                {isSaving ? (
+                  "Memverifikasi..."
+                ) : (
+                  <>
+                    <ShieldCheck size={18} /> Simpan Kartu
+                  </>
+                )}
               </button>
             </div>
           </form>

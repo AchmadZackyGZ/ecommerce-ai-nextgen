@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Biarkan preflight CORS lewat tanpa harus login
                 .requestMatchers("/api/auth/**").permitAll() // Biarkan semua endpoint di AuthController bisa diakses tanpa login (untuk login & register)
                 .requestMatchers("/api/webhooks/**").permitAll() // Biarkan Midtrans mengirim notifikasi tanpa harus login
+                .requestMatchers("/api/cards", "/api/cards/**").authenticated()
                 
                 // 🔥 1. PERBAIKAN: HANYA GET yang public
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()    
