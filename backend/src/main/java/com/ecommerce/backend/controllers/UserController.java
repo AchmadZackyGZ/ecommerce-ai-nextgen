@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.security.Principal;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -54,6 +57,16 @@ public class UserController {
                 .status(200)
                 .message("Keamanan akun diperbarui! Password berhasil diubah.")
                 .data(null)
+                .build());
+    }
+
+    @GetMapping("/devices")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUserDevices(Principal principal) {
+        
+        return ResponseEntity.ok(ApiResponse.<List<Map<String, Object>>>builder()
+                .status(200)
+                .message("Daftar perangkat berhasil diambil.")
+                .data(userService.getUserDevices(principal.getName()))
                 .build());
     }
 
