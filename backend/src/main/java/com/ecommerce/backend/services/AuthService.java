@@ -1,5 +1,6 @@
 package com.ecommerce.backend.services;
 
+import com.ecommerce.backend.config.GetStreamConfig;
 import com.ecommerce.backend.dtos.AuthRequest;
 import com.ecommerce.backend.dtos.AuthResponse;
 import com.ecommerce.backend.exceptions.BadRequestException;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
+
 
 @Service
 public class AuthService {
@@ -27,10 +29,12 @@ public class AuthService {
     @Autowired
     private UserDeviceRepository userDeviceRepository;
 
+    GetStreamConfig getStreamConfig;
+
 
     public AuthResponse login(AuthRequest request, String ipAddress, String userAgent) {
         try {
-            // 1. Suruh Satpam mengecek kecocokan email dan password
+            //  Suruh Satpam mengecek kecocokan email dan password
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
@@ -39,7 +43,7 @@ public class AuthService {
             throw new BadRequestException("Email atau Password salah!");
         }
 
-        // 2. Jika lolos, ambil data user
+        //  Jika lolos, ambil data user
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new BadRequestException("User tidak ditemukan"));
 
@@ -52,12 +56,20 @@ public class AuthService {
                 .build();
         userDeviceRepository.save(userDevice);
 
-        // 3. Cetak tiket JWT
+        //  Cetak tiket JWT
         String jwtToken = jwtService.generateToken(user);
 
-        // 4. Berikan balasan
+        //   CETAK TIKET GETSTREAM (Untuk akses fitur Chat)
+        // GetStream hanya butuh payload "user_id" (dalam bentuk String) yang di-Tanda Tangani oleh Secret API
+        String streamToken = io.jsonwebtoken.Jwts.builder()
+                .claim("user_id", String.valueOf(user.getId())) // Gunakan ID User Nexia sebagai ID GetStream
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(getStreamConfig.getSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8)), io.jsonwebtoken.SignatureAlgorithm.HS256)
+                .compact();
+
+        //  Berikan balasan ke Frontend berupa tiket JWT, tiket GetStream, nama user, dan role user
         return AuthResponse.builder()
                 .token(jwtToken)
+                .streamToken(streamToken)
                 .role(user.getRole().name())
                 .name(user.getName())
                 .build();
