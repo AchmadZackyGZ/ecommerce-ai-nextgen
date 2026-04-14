@@ -13,6 +13,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+
 
 @Service
 public class AuthService {
@@ -63,9 +65,9 @@ public class AuthService {
         // GetStream hanya butuh payload "user_id" (dalam bentuk String) yang di-Tanda Tangani oleh Secret API
         String streamToken = io.jsonwebtoken.Jwts.builder()
                 .claim("user_id", String.valueOf(user.getId())) // Gunakan ID User Nexia sebagai ID GetStream
-                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(getStreamConfig.getSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8)), io.jsonwebtoken.SignatureAlgorithm.HS256)
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(getStreamConfig.getSecret().getBytes(StandardCharsets.UTF_8)), io.jsonwebtoken.SignatureAlgorithm.HS256)
                 .compact();
-
+        
         //  Berikan balasan ke Frontend berupa tiket JWT, tiket GetStream, nama user, dan role user
         return AuthResponse.builder()
                 .token(jwtToken)
