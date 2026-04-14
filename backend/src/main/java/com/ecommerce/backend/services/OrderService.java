@@ -11,6 +11,8 @@ import com.midtrans.httpclient.SnapApi; // 🔥 IMPORT CORE MIDTRANS
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ecommerce.backend.events.OrderStatusEvent; // 🔥 IMPORT EVENT NOTIFIKASI
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,6 +34,7 @@ public class OrderService {
     @Autowired private ShopRepository shopRepository;
     @Autowired private ProductVariantRepository productVariantRepository;
     @Autowired private AddressRepository addressRepository;
+    @Autowired private ApplicationEventPublisher eventPublisher; //  INI UNTUK MENERBITKAN EVENT NOTIFIKASI
 
     @Transactional
     public OrderResponse checkout(OrderRequest request, String userEmail) {
@@ -268,6 +271,13 @@ public class OrderService {
                         .subTotal(item.getPrice().multiply(new BigDecimal(item.getQuantity())))
                         .build()
         ).collect(Collectors.toList());
+
+        // LEPASKAN PELATUK NOTIFIKASI KE BACKGROUND!
+        eventPublisher.publishEvent(new OrderStatusEvent(
+                order.getUser(),
+                "Pesanan Berhasil Dibuat",
+                "Pesanan Anda (ID: " + order.getId() + ") telah diterima dan sedang menunggu pembayaran."
+        ));
 
         return OrderResponse.builder()
                 .orderId(order.getId())
