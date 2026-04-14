@@ -272,7 +272,7 @@ public class OrderService {
                         .build()
         ).collect(Collectors.toList());
 
-        // LEPASKAN PELATUK NOTIFIKASI KE BACKGROUND!
+        //  NOTIFIKASI KE BACKGROUND!
         eventPublisher.publishEvent(new OrderStatusEvent(
                 order.getUser(),
                 "Pesanan Berhasil Dibuat",
