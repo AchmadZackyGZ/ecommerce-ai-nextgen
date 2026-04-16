@@ -31,6 +31,7 @@ public class AuthService {
     @Autowired
     private UserDeviceRepository userDeviceRepository;
 
+    @Autowired
     GetStreamConfig getStreamConfig;
 
 
