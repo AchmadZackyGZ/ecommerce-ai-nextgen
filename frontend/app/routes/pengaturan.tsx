@@ -763,7 +763,7 @@ export default function AccountSettings() {
                   <div className="space-y-4">
                     {devices.length === 0 ? (
                       <p className="text-center text-zinc-500 py-6">
-                        Memuat data perangkat...
+                        Memuat data perangkat Akun Anda...
                       </p>
                     ) : (
                       devices.map((device, index) => {
