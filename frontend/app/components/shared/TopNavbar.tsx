@@ -164,7 +164,7 @@ export default function TopNavbar() {
               )}
             </Link>
 
-            {/* 🔥 THE GLASSMORPHISM PROFILE DROPDOWN - 🛠️ FIX BUG 3: Tambah onClick */}
+            {/*  THE GLASSMORPHISM PROFILE DROPDOWN -  FIX BUG 3: Tambah onClick */}
             <div className="relative group">
               {/* Tombol Trigger Profile */}
               <button
@@ -175,7 +175,7 @@ export default function TopNavbar() {
                 <User size={20} />
               </button>
 
-              {/* Panel Dropdown: Kombinasi state isProfileOpen (Mobile) & group-hover (Desktop) */}
+              {/* dropdown Kombinasi state isProfileOpen (Mobile) & group-hover (Desktop) */}
               <div
                 className={`absolute right-0 top-full pt-2 transition-all duration-300 ${isProfileOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible translate-y-2 lg:group-hover:opacity-100 lg:group-hover:visible lg:group-hover:translate-y-0"}`}
               >
