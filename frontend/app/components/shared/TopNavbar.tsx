@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
+  Bell,
+  MessageCircle,
 } from "lucide-react";
 import { useAuthStore } from "~/store/authStore";
 
@@ -23,6 +25,8 @@ export default function TopNavbar() {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // State khusus untuk tap di Mobile
   const [cartCount, setCartCount] = useState(0); // state untuk cart count
+  const [unreadNotification, setUnreadNotification] = useState(0); // state untuk notifikasi
+  const [isChatOpen, setIsChatOpen] = useState(false); // state untuk chat
 
   // state untuk get imageUrlProfile
   const [avatarPreview, setAvatarPreview] = useState<String | null>(null);
@@ -161,6 +165,17 @@ export default function TopNavbar() {
                 <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg animate-in zoom-in">
                   {cartCount}
                 </span>
+              )}
+            </Link>
+
+            {/* 🔥 BARU: TOMBOL NOTIFIKASI */}
+            <Link
+              to="/pengaturan?tab=Notifikasi" // Arahkan ke tab Notifikasi di halaman pengaturan
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-zinc-400 transition-all hover:bg-white/10 hover:text-white"
+            >
+              <Bell size={22} />
+              {unreadNotification > 0 && (
+                <span className="absolute right-1 top-1 flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></span>
               )}
             </Link>
 
