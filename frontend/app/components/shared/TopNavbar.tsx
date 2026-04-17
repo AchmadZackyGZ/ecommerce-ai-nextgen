@@ -12,7 +12,6 @@ import {
   ChevronRight,
   X,
   Bell,
-  MessageCircle,
 } from "lucide-react";
 import { useAuthStore } from "~/store/authStore";
 
@@ -26,7 +25,6 @@ export default function TopNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false); // State khusus untuk tap di Mobile
   const [cartCount, setCartCount] = useState(0); // state untuk cart count
   const [unreadNotification, setUnreadNotification] = useState(0); // state untuk notifikasi
-  const [isChatOpen, setIsChatOpen] = useState(false); // state untuk chat
 
   // state untuk get imageUrlProfile
   const [avatarPreview, setAvatarPreview] = useState<String | null>(null);
