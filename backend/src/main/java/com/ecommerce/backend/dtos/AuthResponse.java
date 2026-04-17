@@ -6,6 +6,7 @@ import lombok.Data;
 @Data  //Lombok annotation to generate getters, setters, and other utility methods
 @Builder // Lombok annotation to generate a builder pattern for this class
 public class AuthResponse {
+    private Long id; // ID user yang berhasil login
     private String token; // Tiket sakti JWT-nya
     private String streamToken; // TOKEN UNTUK CHAT GETSTREAM
     private String name; // private String email 

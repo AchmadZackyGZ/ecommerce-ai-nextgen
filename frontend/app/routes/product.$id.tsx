@@ -13,6 +13,7 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import { useCartStore } from "~/store/cartStore";
+import { useChatStore } from "~/store/chatStore";
 import { toast } from "sonner";
 import { generateMeta } from "~/utils/seo";
 import { apiClient } from "~/services/apiClient";
@@ -33,6 +34,11 @@ export default function ProductDetail() {
   const [reviews, setReviews] = useState<any[]>([]); // 🔥 STATE BARU UNTUK REVIEW ASLI
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+
+  // 🔥 STATE BARU UNTUK CHAT
+  const openChatWithSeller = useChatStore(
+    (state: any) => state.openChatWithSeller,
+  );
 
   // 🎨 State UI
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -321,7 +327,21 @@ export default function ProductDetail() {
                 Aktif 2 Menit Lalu
               </span>
               <div className="mt-2 flex gap-2">
-                <button className="flex items-center gap-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 px-4 py-1.5 text-xs font-bold text-cyan-400 transition-colors hover:bg-cyan-500 hover:text-black">
+                <button
+                  onClick={() => {
+                    // Asumsi: Backend mengirim ID pemilik toko. Jika belum, kita fallback ke "1" (Admin)
+                    const sellerId =
+                      product?.shop?.ownerId || product?.shopOwnerId || "1";
+
+                    // Buka chat dan bawa data produk!
+                    openChatWithSeller(String(sellerId), {
+                      name: product.name,
+                      price: dynamicPrice,
+                      image: productImages[0],
+                    });
+                  }}
+                  className="flex items-center gap-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 px-4 py-1.5 text-xs font-bold text-cyan-400 transition-colors hover:bg-cyan-500 hover:text-black"
+                >
                   <MessageSquare size={14} /> Chat Sekarang
                 </button>
                 <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-transparent px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/5">

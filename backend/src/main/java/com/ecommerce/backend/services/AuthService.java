@@ -71,6 +71,7 @@ public class AuthService {
         
         //  Berikan balasan ke Frontend berupa tiket JWT, tiket GetStream, nama user, dan role user
         return AuthResponse.builder()
+                .id(user.getId())
                 .token(jwtToken)
                 .streamToken(streamToken)
                 .role(user.getRole().name())
