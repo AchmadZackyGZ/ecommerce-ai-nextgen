@@ -8,17 +8,68 @@ import {
   BotMessageSquare,
   MessageCircle,
 } from "lucide-react";
+
+// 🔥 IMPORT LIBRARY GETSTREAM
+import { StreamChat } from "stream-chat";
+import {
+  Chat,
+  ChannelList,
+  Channel,
+  Window,
+  ChannelHeader,
+  MessageList,
+  MessageComposer,
+} from "stream-chat-react";
+import "stream-chat-react/dist/css/index.css"; // Wajib agar UI-nya tidak berantakan!
+
 import { useAiStore } from "~/store/aiStore";
 import { useAuthStore } from "~/store/authStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+// inisialisasi StreamChat dengan api
+const apiKey = import.meta.env.VITE_GETSTREAM_PUBLIC_KEY || "DUMMY_KEY";
+const chatClient = StreamChat.getInstance(apiKey);
 
 export default function FloatingNav() {
   const [isOpen, setIsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false); // state untuk cek apakah chat client sudah siap
 
   const toggleAiChat = useAiStore((state) => state.toggleChat);
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user); // ambil data user dari authStore
   const navigate = useNavigate();
+
+  // hubungkan dengan server getStream
+  useEffect(() => {
+    // Pastikan user sudah login dan memiliki streamToken (yang kita kirim dari Spring Boot!)
+    if (user && user.streamToken && isChatOpen && !isClientReady) {
+      const connectionStream = async () => {
+        try {
+          await chatClient.connectUser(
+            {
+              id: String(user.id), // pastikan id ini unik untuk setiap user
+              name: user.name,
+              image: user.avatarUrl, // pastikan ini URL yang valid
+            },
+            user.streamToken, // token yang kita generate di backend
+          );
+          setIsClientReady(true);
+        } catch (error) {
+          console.error("Gagal connect ke Stream Chat:", error);
+        }
+      };
+
+      connectionStream();
+    }
+    // Membersihkan koneksi saat komponen ditutup/logout
+    return () => {
+      if (isClientReady) {
+        chatClient.disconnectUser();
+        setIsClientReady(false);
+      }
+    };
+  }, [user, isChatOpen]);
 
   const handleLogout = () => {
     logout();
@@ -35,6 +86,10 @@ export default function FloatingNav() {
     setIsOpen(false); // Tutup menu bulat
     setIsChatOpen(!isChatOpen); // Buka Kotak Chat GetStream
   };
+
+  // 🔥 FILTER: Hanya tampilkan chat yang melibatkan user ini
+  const filters = { members: { $in: [String(user?.id)] } };
+  const sort = { last_message_at: -1 };
 
   return (
     <>
@@ -120,12 +175,13 @@ export default function FloatingNav() {
         </div>
       </div>
 
-      {/* 🚀 KOTAK POP-UP CHAT GETSTREAM (Muncul di sebelah kiri menu bulat) */}
+      {/* 🚀 KOTAK POP-UP CHAT GETSTREAM AKTIF! */}
       {isChatOpen && (
-        <div className="fixed bottom-24 right-24 z-[70] w-[350px] h-[500px] bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 origin-bottom-right">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 flex justify-between items-center text-black font-bold">
+        <div className="fixed bottom-24 right-24 z-[70] w-[750px] h-[550px] bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 origin-bottom-right flex flex-col">
+          {/* Header Global */}
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-3.5 flex justify-between items-center text-black font-bold shrink-0">
             <span className="flex items-center gap-2">
-              <MessageCircle size={18} /> Chat Penjual
+              <MessageCircle size={18} /> Nexia Chat Center
             </span>
             <button
               onClick={() => setIsChatOpen(false)}
@@ -134,15 +190,37 @@ export default function FloatingNav() {
               <X size={18} />
             </button>
           </div>
-          <div className="p-4 text-center text-zinc-500 flex flex-col items-center justify-center h-full bg-black/40 backdrop-blur-sm">
-            <MessageCircle
-              size={40}
-              className="mb-3 text-emerald-500/50 animate-pulse"
-            />
-            <h4 className="font-bold text-zinc-300 mb-1">
-              Memuat GetStream....
-            </h4>
-            <p className="text-sm">Menghubungkan ke server chat aman Nexia.</p>
+
+          {/* Body GetStream */}
+          <div className="flex-1 overflow-hidden bg-black text-white relative stream-theme-dark">
+            {!isClientReady ? (
+              <div className="flex flex-col items-center justify-center h-full text-zinc-500 animate-pulse">
+                <MessageCircle size={40} className="mb-3 text-emerald-500/50" />
+                <p>Menghubungkan ke Server...</p>
+              </div>
+            ) : (
+              // 🔥 KOMPONEN AJAIB GETSTREAM
+              <Chat client={chatClient} theme="str-chat__theme-dark">
+                {/* 📐 MASTER-DETAIL LAYOUT (KIRI & KANAN) */}
+                <div className="flex h-full w-full">
+                  {/* KIRI (ASIDE): Daftar Siapa Saja yang Chat */}
+                  <div className="w-[280px] h-full border-r border-white/10 shrink-0 overflow-y-auto bg-zinc-900/50">
+                    <ChannelList filters={filters as any} sort={sort as any} />
+                  </div>
+
+                  {/* KANAN (MAIN): Ruang Obrolan Aktif */}
+                  <div className="flex-1 h-full min-w-0 flex flex-col bg-black relative">
+                    <Channel>
+                      <Window>
+                        <ChannelHeader />
+                        <MessageList />
+                        <MessageComposer />
+                      </Window>
+                    </Channel>
+                  </div>
+                </div>
+              </Chat>
+            )}
           </div>
         </div>
       )}
