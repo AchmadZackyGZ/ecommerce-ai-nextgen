@@ -6,7 +6,6 @@ import com.ecommerce.backend.models.Notification;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.NotificationRepository;
 import com.ecommerce.backend.repositories.UserRepository;
-import com.fasterxml.jackson.databind.annotation.JsonAppend.Attr;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
