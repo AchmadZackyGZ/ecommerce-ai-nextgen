@@ -17,6 +17,7 @@ import { useChatStore } from "~/store/chatStore";
 import { toast } from "sonner";
 import { generateMeta } from "~/utils/seo";
 import { apiClient } from "~/services/apiClient";
+import { useAuthStore } from "~/store/authStore";
 
 export const meta = () =>
   generateMeta(
@@ -39,6 +40,8 @@ export default function ProductDetail() {
   const openChatWithSeller = useChatStore(
     (state: any) => state.openChatWithSeller,
   );
+
+  const user = useAuthStore((state: any) => state.user);
 
   // 🎨 State UI
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -329,11 +332,23 @@ export default function ProductDetail() {
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={() => {
-                    // Asumsi: Backend mengirim ID pemilik toko. Jika belum, kita fallback ke "1" (Admin)
-                    const sellerId =
-                      product?.shop?.ownerId || product?.shopOwnerId || "1";
+                    // 🔥 SEKARANG KITA PAKAI DATA ASLI DARI BACKEND!
+                    const sellerId = product.shopOwnerId;
 
-                    // Buka chat dan bawa data produk!
+                    // Keamanan ekstra: Cegah user chat dengan dirinya sendiri jika dia membuka produknya sendiri
+                    if (String(sellerId) === String(user?.id)) {
+                      return toast.error(
+                        "Anda tidak bisa chat dengan toko Anda sendiri!",
+                      );
+                    }
+
+                    if (!sellerId) {
+                      return toast.error(
+                        "Gagal memuat data toko. Silakan refresh halaman.",
+                      );
+                    }
+
+                    // Buka chat dengan toko berdasarkan data produk!
                     openChatWithSeller(String(sellerId), {
                       name: product.name,
                       price: dynamicPrice,
@@ -343,9 +358,6 @@ export default function ProductDetail() {
                   className="flex items-center gap-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 px-4 py-1.5 text-xs font-bold text-cyan-400 transition-colors hover:bg-cyan-500 hover:text-black"
                 >
                   <MessageSquare size={14} /> Chat Sekarang
-                </button>
-                <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-transparent px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/5">
-                  <Store size={14} /> Kunjungi Toko
                 </button>
               </div>
             </div>
