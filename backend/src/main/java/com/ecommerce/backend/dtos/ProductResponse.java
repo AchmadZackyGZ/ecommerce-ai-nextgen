@@ -20,6 +20,9 @@ public class ProductResponse {
     private Long shopId;
     private String shopName;
 
+    // UNTUK FITUR CHAT GETSTREAM!
+    private Long shopOwnerId;
+
     // informasi tambahan tentang toko untuk memperkaya tampilan di Frontend!
     private String shopAvatar;
     private Double shopRating;
