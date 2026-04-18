@@ -210,6 +210,7 @@ public class ProductService {
                 .imageUrl(product.getImageUrl())
                 .shopId(product.getShop().getId())
                 .shopName(product.getShop().getName())
+                .shopOwnerId(product.getShop().getOwner().getId())
                 .shopAvatar(product.getShop().getAvatarUrl()) // Ambil avatar toko dari database
                 .shopRating(averageRating) 
                 .shopTotalProducts(totalProducts) 
