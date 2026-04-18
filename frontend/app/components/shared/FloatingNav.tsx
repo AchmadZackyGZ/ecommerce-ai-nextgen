@@ -20,6 +20,8 @@ import {
   MessageList,
   MessageComposer,
   useChatContext,
+  Attachment,
+  WithComponents,
 } from "stream-chat-react";
 import "stream-chat-react/dist/css/index.css";
 
@@ -40,7 +42,6 @@ function AutoSelectChannelManager({
   productContext: any;
   user: any;
 }) {
-  // Menyusup ke otak internal GetStream untuk memaksa pindah channel
   const { client, setActiveChannel } = useChatContext();
 
   useEffect(() => {
@@ -50,7 +51,7 @@ function AutoSelectChannelManager({
           members: [String(user.id), String(sellerId)],
         });
         await channel.watch();
-        setActiveChannel(channel); //  Biarkan Stream yang mengurus state aktifnya!
+        setActiveChannel(channel);
 
         if (productContext) {
           await channel.sendMessage({
@@ -64,7 +65,6 @@ function AutoSelectChannelManager({
               },
             ],
           });
-          // Kosongkan agar tidak nge-spam
           useChatStore.setState({ activeProductContext: null });
         }
       };
@@ -72,11 +72,50 @@ function AutoSelectChannelManager({
     }
   }, [sellerId, user, productContext, client, setActiveChannel]);
 
-  return null; // Komponen ini tidak punya UI, murni mesin logika!
+  return null;
+}
+
+function CustomAttachment(props: any) {
+  // 🔥 GETSTREAM V14 MENGIRIMKAN ARRAY 'attachments' (Pakai 's'), BUKAN TUNGGAL!
+  const { attachments } = props;
+
+  // Cari apakah di dalam array lampiran tersebut ada yang tipenya "product"
+  const productAttachment = attachments?.find((a: any) => a.type === "product");
+
+  if (productAttachment) {
+    return (
+      <div className="bg-zinc-900 border border-white/10 rounded-xl p-3 flex gap-3 my-2 w-[280px] shadow-lg hover:border-cyan-500/30 transition-colors relative overflow-hidden">
+        {/* Garis Aksen Kiri */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-purple-500"></div>
+
+        {/* Gambar Produk */}
+        <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-black">
+          <img
+            src={productAttachment.image_url}
+            alt={productAttachment.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Info Produk */}
+        <div className="flex flex-col justify-center flex-1">
+          <h4 className="text-[13px] font-bold text-zinc-100 line-clamp-2 leading-tight">
+            {productAttachment.title}
+          </h4>
+          <span className="text-cyan-400 font-black text-[13px] mt-1.5">
+            {productAttachment.text}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika bukan product (misal ngirim gambar biasa), kembalikan ke UI bawaan GetStream
+  return <Attachment {...props} />;
 }
 
 function ChannelWrapper() {
-  const { channel } = useChatContext(); // Cek apakah ada obrolan yang sedang aktif
+  const { channel } = useChatContext();
 
   if (!channel) {
     return (
@@ -88,13 +127,15 @@ function ChannelWrapper() {
   }
 
   return (
-    <Channel>
-      <Window>
-        <ChannelHeader />
-        <MessageList />
-        <MessageComposer />
-      </Window>
-    </Channel>
+    <WithComponents overrides={{ Attachment: CustomAttachment }}>
+      <Channel>
+        <Window>
+          <ChannelHeader />
+          <MessageList />
+          <MessageComposer />
+        </Window>
+      </Channel>
+    </WithComponents>
   );
 }
 
