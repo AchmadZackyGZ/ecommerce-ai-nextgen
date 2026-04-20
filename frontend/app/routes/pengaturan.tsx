@@ -96,6 +96,9 @@ export default function AccountSettings() {
     bankName: "BCA",
   });
 
+  // state untuk notifikasi
+  const [notifications, setNotifications] = useState<any[]>([]);
+
   // state untuk keamanan
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: "",
@@ -133,12 +136,14 @@ export default function AccountSettings() {
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const [userRes, addressRes, cardRes, devicesRes] = await Promise.all([
-        apiClient.get("/users/me"),
-        apiClient.get("/addresses"),
-        apiClient.get("/cards"),
-        apiClient.get("/users/devices"),
-      ]);
+      const [userRes, addressRes, cardRes, devicesRes, notifRes] =
+        await Promise.all([
+          apiClient.get("/users/me"),
+          apiClient.get("/addresses"),
+          apiClient.get("/cards"),
+          apiClient.get("/users/devices"),
+          apiClient.get("/notifications"),
+        ]);
 
       const user = userRes.data.data;
       setUserData({
@@ -150,6 +155,7 @@ export default function AccountSettings() {
       setAddresses(addressRes.data.data || []);
       setCards(cardRes.data.data || []);
       setDevices(devicesRes.data.data || []);
+      setNotifications(notifRes.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data:", error);
     } finally {
@@ -346,6 +352,20 @@ export default function AccountSettings() {
       toast.error(error.response?.data?.message || "Gagal mengubah password.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // --- HANDLER NOTIFIKASI ---
+  const handleMarkAsRead = async (id: number, isRead: boolean) => {
+    if (isRead) return; // Jika sudah dibaca, jangan tembak API lagi
+    try {
+      await apiClient.put(`/notifications/${id}/read`);
+      // Update UI langsung tanpa loading ulang
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true, read: true } : n)),
+      );
+    } catch (error) {
+      console.error("Gagal menandai notifikasi:", error);
     }
   };
 
@@ -660,13 +680,84 @@ export default function AccountSettings() {
               </div>
             )}
 
-            {/* TAB NOTIFIKASI & KEAMANAN (Dibiarkan Dummy untuk Fase 3) */}
+            {/* TAB NOTIFIKASI */}
             {activeTab === "Notifikasi" && (
-              <div className="p-10 text-center text-zinc-500">
-                <Bell size={48} className="mx-auto mb-4 opacity-20" />
-                Fitur Notifikasi segera hadir di Fase 3.
+              <div className="space-y-4 animate-in fade-in duration-500">
+                {notifications.length === 0 ? (
+                  <div className="p-10 text-center text-zinc-500 bg-zinc-900/30 rounded-[2rem] border border-white/5">
+                    <Bell size={48} className="mx-auto mb-4 opacity-20" />
+                    <p>Belum ada notifikasi untuk Anda.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {notifications.map((notif) => {
+                      // Cek status baca (Lombok terkadang serialize boolean isRead menjadi 'read')
+                      const isAlreadyRead = notif.isRead ?? notif.read;
+
+                      return (
+                        <div
+                          key={notif.id}
+                          onClick={() =>
+                            handleMarkAsRead(notif.id, isAlreadyRead)
+                          }
+                          className={`flex gap-4 p-5 rounded-2xl border transition-all cursor-pointer ${
+                            !isAlreadyRead
+                              ? "bg-cyan-500/5 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.05)]"
+                              : "bg-zinc-900/30 border-white/5 hover:bg-white/5"
+                          }`}
+                        >
+                          <div
+                            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+                              !isAlreadyRead
+                                ? "bg-cyan-500/20 text-cyan-400"
+                                : "bg-zinc-800 text-zinc-400"
+                            }`}
+                          >
+                            {notif.type === "STATUS_PESANAN" ? (
+                              <Package size={24} />
+                            ) : (
+                              <Ticket size={24} />
+                            )}
+                          </div>
+
+                          <div className="flex-1 flex flex-col justify-center min-w-0">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 md:gap-4 mb-1">
+                              <h4
+                                className={`text-sm font-bold truncate ${!isAlreadyRead ? "text-white" : "text-zinc-400"}`}
+                              >
+                                {notif.title}
+                              </h4>
+                              <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap shrink-0">
+                                {new Date(notif.createdAt).toLocaleDateString(
+                                  "id-ID",
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )}
+                              </span>
+                            </div>
+                            <p
+                              className={`text-sm leading-relaxed line-clamp-2 ${!isAlreadyRead ? "text-zinc-300" : "text-zinc-500"}`}
+                            >
+                              {notif.message}
+                            </p>
+                          </div>
+
+                          {/* Titik Merah (Biru Neon) untuk penanda Unread */}
+                          {!isAlreadyRead && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 mt-2 shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.8)] animate-pulse"></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
             {/* TAB KEAMANAN (FASE 3) */}
             {activeTab === "Keamanan" && (
               <div className="space-y-6 animate-in fade-in duration-500">
