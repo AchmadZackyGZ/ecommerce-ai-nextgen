@@ -32,6 +32,7 @@ public class NotificationService {
                         .title(notif.getTitle())
                         .message(notif.getMessage())
                         .type(notif.getType())
+                        .imageUrl(notif.getImageUrl())
                         .isRead(notif.isRead())
                         .createdAt(notif.getCreatedAt())
                         .build())
