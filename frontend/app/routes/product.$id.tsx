@@ -180,7 +180,8 @@ export default function ProductDetail() {
     rating: product?.shopRating ? Number(product.shopRating).toFixed(1) : "4.8",
     totalProducts: product?.shopTotalProducts || 0,
     joinDate: product?.shopJoinDate || "Baru Bergabung",
-    responseRate: product?.shopResponseRate || "90%",
+    responseRate: product?.shopResponseRate || "100%",
+    lastActive: product?.shopLastActive || "Offline",
   };
 
   if (isLoading) {
@@ -327,12 +328,14 @@ export default function ProductDetail() {
               <h3 className="text-lg font-black text-white">{shopData.name}</h3>
               <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
-                Aktif 2 Menit Lalu
+                {shopData.lastActive != "Offline" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                )}
+                {shopData.lastActive}
               </span>
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={() => {
-                    // 🔥 SEKARANG KITA PAKAI DATA ASLI DARI BACKEND!
                     const sellerId = product.shopOwnerId;
 
                     // Keamanan ekstra: Cegah user chat dengan dirinya sendiri jika dia membuka produknya sendiri
