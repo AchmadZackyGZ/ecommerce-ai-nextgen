@@ -44,6 +44,8 @@ public class User implements org.springframework.security.core.userdetails.UserD
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    private LocalDateTime lastActive;
+
     // 🔥 --- EVOLUSI NEXIA V1: RELASI BARU --- 🔥
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
