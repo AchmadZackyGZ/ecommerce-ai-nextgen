@@ -49,6 +49,10 @@ public class AuthService {
         //  Jika lolos, ambil data user
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new BadRequestException("User tidak ditemukan"));
+        
+        //  Catat waktu aktif terakhir
+            user.setLastActive(java.time.LocalDateTime.now());
+            userRepository.save(user); // Simpan ke database PostgreSQL
 
         // CATAT PERANGKAT YANG BARU SAJA LOGIN KE DATABASE!
         UserDevice userDevice = UserDevice.builder()
