@@ -272,11 +272,18 @@ public class OrderService {
                         .build()
         ).collect(Collectors.toList());
 
+        String productImageUrl = null;
+
+       if(!itemResponses.isEmpty()) { 
+           productImageUrl = itemResponses.get(0).getImageUrl();
+        }
+
         //  NOTIFIKASI KE BACKGROUND!
         eventPublisher.publishEvent(new OrderStatusEvent(
                 order.getUser(),
                 "Pesanan Berhasil Dibuat",
-                "Pesanan Anda (ID: " + order.getId() + ") telah diterima dan sedang menunggu pembayaran."
+                "Pesanan Anda (ID: " + order.getId() + ") telah diterima dan sedang menunggu pembayaran.",
+                productImageUrl
         ));
 
         return OrderResponse.builder()
