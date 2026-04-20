@@ -2,6 +2,8 @@ package com.ecommerce.backend.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.Builder.Default;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,6 +25,9 @@ public class Shop {
 
     // Simpan URL dari Cloudinary (jika upload manual) ATAU URL Dicebear (jika generate random)
     private String avatarUrl;
+
+    @Default
+    private Integer responseRate = 100;
 
     // ENUM : Status Toko
     @Enumerated(EnumType.STRING)
