@@ -10,4 +10,5 @@ public class OrderStatusEvent {
     private User user;
     private String title;
     private String message;
+    private String imageUrl;
 }

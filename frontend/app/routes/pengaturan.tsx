@@ -707,16 +707,32 @@ export default function AccountSettings() {
                           }`}
                         >
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
-                              !isAlreadyRead
-                                ? "bg-cyan-500/20 text-cyan-400"
-                                : "bg-zinc-800 text-zinc-400"
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
+                              !isAlreadyRead ? "bg-cyan-500/20" : "bg-zinc-800"
                             }`}
                           >
-                            {notif.type === "STATUS_PESANAN" ? (
-                              <Package size={24} />
+                            {/*  GAMBAR PRODUK ATAU IKON STANDAR */}
+                            {notif.imageUrl ? (
+                              <img
+                                src={notif.imageUrl}
+                                alt="Notif"
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              <Ticket size={24} />
+                              // Fallback jika tidak ada gambar
+                              <div
+                                className={
+                                  !isAlreadyRead
+                                    ? "text-cyan-400"
+                                    : "text-zinc-400"
+                                }
+                              >
+                                {notif.type === "STATUS_PESANAN" ? (
+                                  <Package size={24} />
+                                ) : (
+                                  <Ticket size={24} />
+                                )}
+                              </div>
                             )}
                           </div>
 
