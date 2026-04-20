@@ -177,6 +177,20 @@ public class OrderService {
             }
         }
 
+        String productImageUrl = null;
+
+       if(!orderItems.isEmpty()) { 
+           productImageUrl = orderItems.get(0).getVariant().getProduct().getImageUrl();
+        }
+
+        //  NOTIFIKASI KE BACKGROUND!
+        eventPublisher.publishEvent(new OrderStatusEvent(
+                order.getUser(),
+                "Pesanan Berhasil Dibuat",
+                "Pesanan Anda (ID: " + order.getId() + ") telah diterima dan sedang menunggu pembayaran.",
+                productImageUrl
+        ));
+
         return mapToOrderResponse(savedOrder, orderItems);
     }
 
@@ -271,20 +285,6 @@ public class OrderService {
                         .subTotal(item.getPrice().multiply(new BigDecimal(item.getQuantity())))
                         .build()
         ).collect(Collectors.toList());
-
-        String productImageUrl = null;
-
-       if(!itemResponses.isEmpty()) { 
-           productImageUrl = itemResponses.get(0).getImageUrl();
-        }
-
-        //  NOTIFIKASI KE BACKGROUND!
-        eventPublisher.publishEvent(new OrderStatusEvent(
-                order.getUser(),
-                "Pesanan Berhasil Dibuat",
-                "Pesanan Anda (ID: " + order.getId() + ") telah diterima dan sedang menunggu pembayaran.",
-                productImageUrl
-        ));
 
         return OrderResponse.builder()
                 .orderId(order.getId())

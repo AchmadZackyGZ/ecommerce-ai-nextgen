@@ -690,85 +690,94 @@ export default function AccountSettings() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {notifications.map((notif) => {
-                      // Cek status baca (Lombok terkadang serialize boolean isRead menjadi 'read')
-                      const isAlreadyRead = notif.isRead ?? notif.read;
+                    {/*  saring notifikais dengan pesan yang sama */}
+                    {notifications
+                      .filter(
+                        (notif, index, self) =>
+                          index ===
+                          self.findIndex((t) => t.message === notif.message),
+                      )
+                      .map((notif) => {
+                        // Cek status baca (Lombok terkadang serialize boolean isRead menjadi 'read')
+                        const isAlreadyRead = notif.isRead ?? notif.read;
 
-                      return (
-                        <div
-                          key={notif.id}
-                          onClick={() =>
-                            handleMarkAsRead(notif.id, isAlreadyRead)
-                          }
-                          className={`flex gap-4 p-5 rounded-2xl border transition-all cursor-pointer ${
-                            !isAlreadyRead
-                              ? "bg-cyan-500/5 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.05)]"
-                              : "bg-zinc-900/30 border-white/5 hover:bg-white/5"
-                          }`}
-                        >
+                        return (
                           <div
-                            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
-                              !isAlreadyRead ? "bg-cyan-500/20" : "bg-zinc-800"
+                            key={notif.id}
+                            onClick={() =>
+                              handleMarkAsRead(notif.id, isAlreadyRead)
+                            }
+                            className={`flex gap-4 p-5 rounded-2xl border transition-all cursor-pointer ${
+                              !isAlreadyRead
+                                ? "bg-cyan-500/5 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.05)]"
+                                : "bg-zinc-900/30 border-white/5 hover:bg-white/5"
                             }`}
                           >
-                            {/*  GAMBAR PRODUK ATAU IKON STANDAR */}
-                            {notif.imageUrl ? (
-                              <img
-                                src={notif.imageUrl}
-                                alt="Notif"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              // Fallback jika tidak ada gambar
-                              <div
-                                className={
-                                  !isAlreadyRead
-                                    ? "text-cyan-400"
-                                    : "text-zinc-400"
-                                }
-                              >
-                                {notif.type === "STATUS_PESANAN" ? (
-                                  <Package size={24} />
-                                ) : (
-                                  <Ticket size={24} />
-                                )}
+                            <div
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
+                                !isAlreadyRead
+                                  ? "bg-cyan-500/20"
+                                  : "bg-zinc-800"
+                              }`}
+                            >
+                              {/*  GAMBAR PRODUK ATAU IKON STANDAR */}
+                              {notif.imageUrl ? (
+                                <img
+                                  src={notif.imageUrl}
+                                  alt="Notif"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                // Fallback jika tidak ada gambar
+                                <div
+                                  className={
+                                    !isAlreadyRead
+                                      ? "text-cyan-400"
+                                      : "text-zinc-400"
+                                  }
+                                >
+                                  {notif.type === "STATUS_PESANAN" ? (
+                                    <Package size={24} />
+                                  ) : (
+                                    <Ticket size={24} />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-center min-w-0">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 md:gap-4 mb-1">
+                                <h4
+                                  className={`text-sm font-bold truncate ${!isAlreadyRead ? "text-white" : "text-zinc-400"}`}
+                                >
+                                  {notif.title}
+                                </h4>
+                                <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap shrink-0">
+                                  {new Date(notif.createdAt).toLocaleDateString(
+                                    "id-ID",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </span>
                               </div>
+                              <p
+                                className={`text-sm leading-relaxed line-clamp-2 ${!isAlreadyRead ? "text-zinc-300" : "text-zinc-500"}`}
+                              >
+                                {notif.message}
+                              </p>
+                            </div>
+
+                            {/* Titik Merah (Biru Neon) untuk penanda Unread */}
+                            {!isAlreadyRead && (
+                              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 mt-2 shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.8)] animate-pulse"></div>
                             )}
                           </div>
-
-                          <div className="flex-1 flex flex-col justify-center min-w-0">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 md:gap-4 mb-1">
-                              <h4
-                                className={`text-sm font-bold truncate ${!isAlreadyRead ? "text-white" : "text-zinc-400"}`}
-                              >
-                                {notif.title}
-                              </h4>
-                              <span className="text-[11px] font-medium text-zinc-500 whitespace-nowrap shrink-0">
-                                {new Date(notif.createdAt).toLocaleDateString(
-                                  "id-ID",
-                                  {
-                                    day: "numeric",
-                                    month: "short",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )}
-                              </span>
-                            </div>
-                            <p
-                              className={`text-sm leading-relaxed line-clamp-2 ${!isAlreadyRead ? "text-zinc-300" : "text-zinc-500"}`}
-                            >
-                              {notif.message}
-                            </p>
-                          </div>
-
-                          {/* Titik Merah (Biru Neon) untuk penanda Unread */}
-                          {!isAlreadyRead && (
-                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 mt-2 shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.8)] animate-pulse"></div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 )}
               </div>
