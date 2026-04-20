@@ -23,6 +23,8 @@ import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -184,13 +186,13 @@ public class ProductService {
             ).collect(Collectors.toList());
         }
 
-        // 🔥 LOGIKA DINAMIS 1: Hitung Rata-Rata Rating Toko dari Database
+        // LOGIKA DINAMIS 1: Hitung Rata-Rata Rating Toko dari Database
         Double averageRating = reviewRepository.getAverageRatingByShopId(product.getShop().getId());
         
-        // 🔥 LOGIKA DINAMIS 2: Hitung Total Produk Toko saat ini
+        // LOGIKA DINAMIS 2: Hitung Total Produk Toko saat ini
         int totalProducts = productRepository.countByShop(product.getShop());
 
-        // 🔥 LOGIKA DINAMIS 3: Kalkulator Waktu Bergabung (Join Date)
+        // LOGIKA DINAMIS 3: Kalkulator Waktu Bergabung (Join Date)
         String joinDateStr = "Baru Bergabung";
         if (product.getShop().getCreatedAt() != null) {
             long days = java.time.temporal.ChronoUnit.DAYS.between(product.getShop().getCreatedAt(), java.time.LocalDateTime.now());
@@ -199,6 +201,25 @@ public class ProductService {
             else if (days < 365) joinDateStr = (days / 30) + " Bulan Lalu";
             else joinDateStr = (days / 365) + " Tahun Lalu";
         }
+
+        // LOGIKA DINAMIS 4: Kalkulator Status Online (Last Active)
+        String lastActiveStr = "Offline";
+        LocalDateTime lastActive = product.getShop().getOwner().getLastActive();
+
+        if(lastActive != null) {
+            long minutes = ChronoUnit.MINUTES.between(lastActive, LocalDateTime.now());
+            if (minutes < 1) lastActiveStr = "Baru Saja Aktif";
+            else if (minutes < 60) lastActiveStr = "Aktif " + minutes + " Menit Lalu";
+            else if (minutes < 1440) lastActiveStr = "Aktif " + (minutes / 60) + " Jam Lalu";
+            else lastActiveStr = "Aktif " + (minutes / 1440) + " Hari Lalu";
+        } else {
+            // Jika user baru daftar dan belum terekam lastActive-nya
+            lastActiveStr = "Baru Saja Aktif";
+        }
+
+        // LOGIKA DINAMIS 5: Format Performa Chat
+        Integer rate = product.getShop().getResponseRate();
+        String responseRateStr = (rate != null ? rate : 100) + "%";
 
         return ProductResponse.builder()
                 .id(product.getId())
@@ -215,6 +236,8 @@ public class ProductService {
                 .shopRating(averageRating) 
                 .shopTotalProducts(totalProducts) 
                 .shopJoinDate(joinDateStr)
+                .shopResponseRate(responseRateStr)
+                .shopLastActive(lastActiveStr)
                 .variants(variantResponses) //  KITA SELIPKAN DATA VARIAN DI SINI!
                 .createdAt(product.getCreatedAt())
                 .build();
