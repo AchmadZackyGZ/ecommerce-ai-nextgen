@@ -30,6 +30,8 @@ public class Notification {
     @Column(nullable = false)
     private String type; // Contoh: "STATUS_PESANAN" atau "PROMO"
 
+    private String imageUrl; // Opsional, untuk ikon atau gambar terkait notifikasi
+
     @Builder.Default
     private boolean isRead = false; // 🔥 Kunci untuk Titik Merah (Unread Badge)
 
