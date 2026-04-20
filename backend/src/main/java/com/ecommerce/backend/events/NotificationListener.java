@@ -21,6 +21,7 @@ public class NotificationListener {
                 .message(event.getMessage())
                 .type("STATUS_PESANAN")
                 .isRead(false)
+                .imageUrl(event.getImageUrl())
                 .build();
         
         notificationRepository.save(notification);
