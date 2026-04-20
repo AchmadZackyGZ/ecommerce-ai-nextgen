@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   User,
   Package,
@@ -34,8 +34,19 @@ export const meta = () =>
   );
 
 export default function AccountSettings() {
-  const [activeTab, setActiveTab] = useState("Profil"); // Default tab "Alamat & Kartu"
+  // tab state dari URL
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "Profil");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Set active tab from URL
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   // 📦 STATE DATA GLOBAL
   const [isLoading, setIsLoading] = useState(true);
@@ -1019,7 +1030,7 @@ export default function AccountSettings() {
         </div>
       )}
 
-      {/* 💳 MODAL TAMBAH KARTU KREDIT (ENTERPRISE UI) */}
+      {/* 💳 MODAL TAMBAH KARTU KREDIT */}
       {isCardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <form
