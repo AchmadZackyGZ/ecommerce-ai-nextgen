@@ -28,6 +28,8 @@ public class ProductResponse {
     private Double shopRating;
     private Integer shopTotalProducts;
     private String shopJoinDate;
+    private String shopResponseRate;
+    private String shopLastActive;
 
     //  EVOLUSI V1: Tambahkan gerbong khusus untuk membawa data Varian ke Frontend!
     private java.util.List<ProductVariantResponse> variants;
