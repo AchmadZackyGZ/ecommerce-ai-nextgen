@@ -13,6 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     //  MENGHITUNG TOTAL PRODUK YANG DIMILIKI SEBUAH TOKO
     int countByShop(Shop shop);
 
+    List<Product> findByShop(Shop shop);
+
     // Ambil produk dari Toko X, urutkan berdasarkan soldCount tertinggi (Terlaris)
     List<Product> findTop5ByShopOrderBySoldCountDesc(Shop shop);            
 }
