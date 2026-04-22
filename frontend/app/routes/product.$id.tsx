@@ -326,10 +326,11 @@ export default function ProductDetail() {
             </div>
             <div className="flex flex-col gap-1">
               <h3 className="text-lg font-black text-white">{shopData.name}</h3>
-              <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
-                {shopData.lastActive != "Offline" && (
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span
+                className={`text-[11px] font-bold flex items-center gap-1.5 mt-0.5 ${shopData.lastActive === "Offline" ? "text-zinc-500" : "text-emerald-400"}`}
+              >
+                {shopData.lastActive !== "Offline" && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse"></span>
                 )}
                 {shopData.lastActive}
               </span>

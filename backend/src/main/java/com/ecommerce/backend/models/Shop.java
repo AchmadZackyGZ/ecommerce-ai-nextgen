@@ -26,6 +26,9 @@ public class Shop {
     // Simpan URL dari Cloudinary (jika upload manual) ATAU URL Dicebear (jika generate random)
     private String avatarUrl;
 
+    private String imageBannerUrl;
+    private String videoBannerUrl;
+
     @Default
     private Integer responseRate = 100;
 
