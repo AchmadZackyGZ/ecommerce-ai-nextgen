@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -115,6 +116,22 @@ public class ProductController {
                 .data(remainingProducts) // 🔥 DATA TIDAK NULL LAGI! FRONTEND AKAN SANGAT BAHAGIA!
                 .build();
 
+        return ResponseEntity.ok(response);
+    }
+
+    // AMBIL SEMUA PRODUK MILIK SATU TOKO TERTENTU (PUBLIK)
+    @GetMapping("/shop/{shopId}")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByShop(@PathVariable Long shopId) {
+        // Karena ProductService mungkin belum punya fungsi ini, kita panggil langsung logika sederhananya:
+        List<ProductResponse> products = productService.getAllProducts().stream()
+                .filter(p -> p.getShopId().equals(shopId))
+                .collect(Collectors.toList());
+
+        ApiResponse<List<ProductResponse>> response = ApiResponse.<List<ProductResponse>>builder()
+                .status(200)
+                .message("Berhasil mengambil katalog toko")
+                .data(products)
+                .build();
         return ResponseEntity.ok(response);
     }
 }
