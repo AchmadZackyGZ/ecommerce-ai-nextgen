@@ -42,6 +42,7 @@ public class Product {
     @Column(nullable = false)
     private String category; //  Fitur Kategori untuk memudahkan pencarian dan filter produk di frontend
 
+    // penghitung jumlah produk yang sudah terjual, bisa diupdate setiap kali ada transaksi berhasil
     @Builder.Default
     @Column(nullable = false)
     private Integer soldCount = 0;
