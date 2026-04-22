@@ -14,5 +14,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     int countByShop(Shop shop);
 
     // Ambil produk dari Toko X, urutkan berdasarkan soldCount tertinggi (Terlaris)
-    List<Product> findTop5ByShopOrderBySoldCountDesc(Shop shop);        
+    List<Product> findTop5ByShopOrderBySoldCountDesc(Shop shop);            
 }

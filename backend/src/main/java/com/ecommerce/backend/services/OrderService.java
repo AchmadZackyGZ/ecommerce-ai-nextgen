@@ -30,6 +30,7 @@ public class OrderService {
     @Autowired private CartRepository cartRepository;
     @Autowired private CartItemRepository cartItemRepository;
     @Autowired private VoucherRepository voucherRepository;
+    @Autowired private ProductRepository productRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private ShopRepository shopRepository;
     @Autowired private ProductVariantRepository productVariantRepository;
@@ -75,6 +76,15 @@ public class OrderService {
             }
             if (validVoucher.getQuota() <= 0) {
                 throw new BadRequestException("Kuota voucher sudah habis!");
+            }
+
+            //  KEAMANAN VOUCHER: Pastikan keranjang belanja berisi produk dari Toko yang menerbitkan Voucher!
+            Voucher finalValidVoucher = validVoucher;
+            boolean isVoucherValidForCart = cartItems.stream()
+                    .anyMatch(item -> item.getVariant().getProduct().getShop().getId().equals(finalValidVoucher.getShop().getId()));
+            
+            if (!isVoucherValidForCart) {
+                throw new BadRequestException("Voucher ini hanya berlaku untuk produk dari toko " + validVoucher.getShop().getName() + "!");
             }
 
             BigDecimal percentageDecimal = new BigDecimal(validVoucher.getDiscountPercentage());
@@ -131,6 +141,11 @@ public class OrderService {
             }
             variant.setStock(variant.getStock() - cartItem.getQuantity());
             productVariantRepository.save(variant);
+
+            // Tambahkan jumlah terjual ke Produk Induk!
+            Product parentProduct = variant.getProduct();
+            parentProduct.setSoldCount(parentProduct.getSoldCount() + cartItem.getQuantity());
+            productRepository.save(parentProduct);
 
             BigDecimal finalPrice = variant.getProduct().getPrice().add(variant.getPriceModifier());
             return OrderItem.builder()
