@@ -1,6 +1,7 @@
 package com.ecommerce.backend.controllers;
 
 import com.ecommerce.backend.dtos.ApiResponse;
+import com.ecommerce.backend.dtos.ShopProfileResponse;
 import com.ecommerce.backend.dtos.ShopRequest;
 import com.ecommerce.backend.dtos.ShopResponse;
 import com.ecommerce.backend.services.ShopService;
@@ -40,5 +41,18 @@ public class ShopController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+    }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<ApiResponse<ShopProfileResponse>> getShopProfile(@PathVariable Long id) {
+        ShopProfileResponse profile = shopService.getShopProfile(id);
+        
+        ApiResponse<ShopProfileResponse> response = ApiResponse.<ShopProfileResponse>builder()
+                .status(200)
+                .message("Berhasil mengambil data profil toko")
+                .data(profile)
+                .build();
+                
+        return ResponseEntity.ok(response);
     }
 }
