@@ -10,10 +10,12 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
+  Users, // 🔥 Tambahan Ikon Users
 } from "lucide-react";
 import { apiClient } from "~/services/apiClient";
-import ProductCard from "~/components/ecommerce/ProductCard"; // Sesuaikan path ini jika perlu
+import ProductCard from "~/components/ecommerce/ProductCard";
 import { generateMeta } from "~/utils/seo";
+import { toast } from "sonner"; // 🔥 Tambahan Toast untuk Notifikasi
 
 export const meta = () =>
   generateMeta(
@@ -27,6 +29,11 @@ export default function SellerProfile() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 🔥 STATE BARU UNTUK FITUR FOLLOWERS
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+
   // Filter Produk
   const availableProducts = allProducts.filter((p) => p.stock > 0);
   const outOfStockProducts = allProducts.filter((p) => p.stock === 0);
@@ -35,7 +42,7 @@ export default function SellerProfile() {
   const [selectedCategory, setSelectedCategory] = useState("Semua Produk");
   const [sortBy, setSortBy] = useState("Populer");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 12; // Shopee style: 12 produk per halaman
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     const fetchShopData = async () => {
@@ -43,7 +50,12 @@ export default function SellerProfile() {
         setIsLoading(true);
         // 1. Tembak API Mega Profil Toko
         const profileRes = await apiClient.get(`/shops/${id}/profile`);
-        setShopData(profileRes.data.data);
+        const profile = profileRes.data.data;
+
+        setShopData(profile);
+        // 🔥 Simpan data follower dari Backend ke State lokal
+        setIsFollowing(profile.isFollowing || false);
+        setFollowerCount(profile.followerCount || 0);
 
         // 2. Tembak API Semua Produk Toko Ini
         const productsRes = await apiClient.get(`/products/shop/${id}`);
@@ -57,6 +69,32 @@ export default function SellerProfile() {
 
     if (id) fetchShopData();
   }, [id]);
+
+  // 🔥 FUNGSI SAKTI: TOGGLE FOLLOW TOKO
+  const handleFollowToggle = async () => {
+    try {
+      setIsFollowLoading(true);
+      // Tembak API Backend
+      const res = await apiClient.post(`/shops/${id}/follow`);
+      const currentlyFollowing = res.data.data; // true / false dari backend
+
+      // Update State UI agar berubah seketika
+      setIsFollowing(currentlyFollowing);
+      setFollowerCount((prev) =>
+        currentlyFollowing ? prev + 1 : Math.max(0, prev - 1),
+      );
+
+      toast.success(res.data.message);
+    } catch (error: any) {
+      console.error("Follow error:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Gagal mengikuti toko. Pastikan Anda sudah Login!",
+      );
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   //  Ekstrak Kategori Unik dari Data Produk
   const uniqueCategories = [
@@ -82,7 +120,7 @@ export default function SellerProfile() {
     processedCatalog.sort((a, b) => a.price - b.price);
   } else if (sortBy === "Harga Termahal") {
     processedCatalog.sort((a, b) => b.price - a.price);
-  } // Untuk "Populer", biarkan default atau sort by soldCount jika ada
+  }
 
   //  Pagination
   const totalPages = Math.ceil(processedCatalog.length / ITEMS_PER_PAGE);
@@ -116,9 +154,9 @@ export default function SellerProfile() {
       {/* 🌟 1. SECTION HEADER TOKO */}
       <div className="bg-zinc-900/50 border-y border-white/5 backdrop-blur-xl">
         <div className="container mx-auto max-w-7xl px-4 md:px-8 py-8">
-          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+          <div className="flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between">
             {/* Identitas Toko */}
-            <div className="flex items-center gap-6 bg-black/40 p-6 rounded-3xl border border-white/5 shadow-2xl md:w-1/3">
+            <div className="flex items-center gap-6 bg-black/40 p-6 rounded-3xl border border-white/5 shadow-2xl w-full lg:w-1/3 shrink-0">
               <div className="w-20 h-20 rounded-full bg-zinc-800 overflow-hidden border-2 border-cyan-500/30 shrink-0">
                 <img
                   src={shopData.avatarUrl}
@@ -137,8 +175,26 @@ export default function SellerProfile() {
                   {shopData.lastActive}
                 </span>
                 <div className="flex gap-2 mt-4">
-                  <button className="px-4 py-1.5 rounded-lg bg-cyan-500 text-black text-sm font-bold hover:bg-cyan-400 transition-colors">
-                    + Ikuti
+                  {/* 🔥 TOMBOL IKUTI YANG SUDAH HIDUP! */}
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={isFollowLoading}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                      isFollowing
+                        ? "bg-zinc-800 text-white hover:bg-zinc-700 border border-white/10"
+                        : "bg-cyan-500 text-black hover:bg-cyan-400"
+                    } disabled:opacity-50`}
+                  >
+                    {isFollowLoading ? (
+                      <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                    ) : isFollowing ? (
+                      <>
+                        <CheckCircle2 size={16} className="text-cyan-400" />
+                        Mengikuti
+                      </>
+                    ) : (
+                      <>+ Ikuti</>
+                    )}
                   </button>
                   <button className="px-4 py-1.5 rounded-lg bg-zinc-800 text-white text-sm font-bold hover:bg-zinc-700 transition-colors border border-white/10 flex items-center gap-2">
                     <MessageCircle size={16} /> Chat
@@ -147,8 +203,17 @@ export default function SellerProfile() {
               </div>
             </div>
 
-            {/* Statistik Toko (Shopee Style) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 flex-1 w-full text-sm">
+            {/* Statistik Toko (Ditambah Pengikut) */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6 flex-1 w-full text-sm">
+              <div className="flex items-center gap-3">
+                <Users className="text-zinc-400" size={20} />
+                <div className="flex flex-col">
+                  <span className="text-zinc-500 font-medium">Pengikut</span>
+                  <span className="text-cyan-400 font-bold">
+                    {followerCount.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <Package className="text-zinc-400" size={20} />
                 <div className="flex flex-col">
@@ -194,7 +259,8 @@ export default function SellerProfile() {
       </div>
 
       <div className="container mx-auto max-w-7xl px-4 md:px-8 mt-8 space-y-12">
-        {/* 🎬 2. SECTION HERO BANNER (VIDEO / GAMBAR) */}
+        {/* ... (SISA KODE KE BAWAH SAMA PERSIS SEPERTI SEBELUMNYA) ... */}
+        {/* 🎬 2. SECTION HERO BANNER */}
         {(shopData.videoBannerUrl || shopData.imageBannerUrl) && (
           <section className="rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-zinc-900">
             {shopData.videoBannerUrl ? (
@@ -250,7 +316,7 @@ export default function SellerProfile() {
           </section>
         )}
 
-        {/* 🏆 4. SECTION PRODUK UNGGULAN (TOP PICKS) */}
+        {/* 🏆 4. SECTION PRODUK UNGGULAN */}
         {shopData.featuredProducts && shopData.featuredProducts.length > 0 && (
           <section className="bg-zinc-900/30 border border-white/5 rounded-3xl p-6 md:p-8">
             <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2 uppercase tracking-wide">
@@ -265,10 +331,9 @@ export default function SellerProfile() {
           </section>
         )}
 
-        {/* 🛍️ 5. SECTION KATALOG UTAMA (SEMUA PRODUK) */}
+        {/* 🛍️ 5. SECTION KATALOG UTAMA */}
         <section className="pt-8 border-t border-white/5">
           <div className="flex flex-col md:flex-row gap-8">
-            {/* 👈 ASIDE KIRI: KATEGORI TOKO */}
             <aside className="w-full md:w-64 shrink-0">
               <h2 className="text-lg font-black text-white mb-6 flex items-center gap-2 uppercase tracking-wider">
                 <Store className="text-cyan-400" size={20} /> Kategori
@@ -279,7 +344,7 @@ export default function SellerProfile() {
                     key={category}
                     onClick={() => {
                       setSelectedCategory(category);
-                      setCurrentPage(1); // Reset page saat ganti kategori
+                      setCurrentPage(1);
                     }}
                     className={`text-left py-2 font-medium transition-all ${
                       selectedCategory === category
@@ -293,9 +358,7 @@ export default function SellerProfile() {
               </div>
             </aside>
 
-            {/* 👉 MAIN KANAN: KONTEN KATALOG */}
             <div className="flex-1 flex flex-col">
-              {/* TOP BAR: Urutkan & Pagination Mini */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between bg-zinc-900/50 p-4 rounded-2xl border border-white/5 mb-6 gap-4">
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="text-zinc-500 mr-2">Urutkan</span>
@@ -312,8 +375,6 @@ export default function SellerProfile() {
                       {sortOption}
                     </button>
                   ))}
-
-                  {/* Select Harga */}
                   <select
                     onChange={(e) => setSortBy(e.target.value)}
                     className="px-4 py-2 rounded-lg bg-black/40 text-zinc-200 border-white/5 outline-none focus:border-cyan-500 cursor-pointer font-bold"
@@ -324,7 +385,6 @@ export default function SellerProfile() {
                   </select>
                 </div>
 
-                {/* Pagination Mini di Kanan Atas */}
                 <div className="flex items-center gap-4 text-sm font-bold">
                   <span className="text-cyan-400">
                     {currentPage}{" "}
@@ -351,7 +411,6 @@ export default function SellerProfile() {
                 </div>
               </div>
 
-              {/* GRID PRODUK */}
               {paginatedProducts.length === 0 ? (
                 <div className="py-20 text-center text-zinc-500 bg-zinc-900/20 rounded-3xl border border-white/5 flex-1 flex items-center justify-center">
                   Tidak ada produk dalam kategori ini.
@@ -364,7 +423,6 @@ export default function SellerProfile() {
                 </div>
               )}
 
-              {/* BOTTOM PAGINATION BESAR */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-auto">
                   {[...Array(totalPages)].map((_, i) => (
@@ -395,7 +453,6 @@ export default function SellerProfile() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {outOfStockProducts.map((product: any) => (
                 <div key={product.id} className="relative">
-                  {/* Overlay Sold Out */}
                   <div className="absolute inset-0 z-10 bg-black/60 flex items-center justify-center rounded-3xl pointer-events-none">
                     <span className="bg-red-500 text-white text-xs font-black px-4 py-1 rounded-full uppercase tracking-widest rotate-[-12deg] border-2 border-black shadow-xl">
                       Habis Terjual
