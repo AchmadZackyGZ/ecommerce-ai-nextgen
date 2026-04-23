@@ -25,5 +25,7 @@ public class ShopProfileResponse {
     // 3. Data Pendukung Section
     private List<VoucherResponse> activeVouchers; // Untuk Section Voucher
     private List<ProductResponse> featuredProducts; // Untuk Section Produk Unggulan (Top 5)
-    // (Daftar produk keseluruhan akan kita panggil dari endpoint produk dengan filter shop_id agar bisa di-pagnasi/kategori nantinya)
+    
+    private Integer followerCount; 
+    private Boolean isFollowing;
 }

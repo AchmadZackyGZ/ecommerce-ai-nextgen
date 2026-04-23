@@ -16,6 +16,8 @@ import com.ecommerce.backend.repositories.ShopRepository;
 import com.ecommerce.backend.repositories.UserRepository;
 import com.ecommerce.backend.repositories.VoucherRepository;
 
+import jakarta.transaction.Transactional;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -87,7 +89,7 @@ public class ShopService {
     }
 
     //  (UNTUK HALAMAN KUNJUNGI TOKO) ---
-    public ShopProfileResponse getShopProfile(Long shopId) {
+    public ShopProfileResponse getShopProfile(Long shopId, String currentUserEmail) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Toko tidak ditemukan!"));
 
@@ -116,6 +118,15 @@ public class ShopService {
             else if (minutes < 60) lastActiveStr = "Aktif " + minutes + " Menit Lalu";
             else if (minutes < 1440) lastActiveStr = "Aktif " + (minutes / 60) + " Jam Lalu";
             else lastActiveStr = "Aktif " + (minutes / 1440) + " Hari Lalu";
+        }
+
+        // Cek apakah User yang sedang login sudah mengikuti toko ini atau belum
+        boolean isFollowing = false;
+        if (currentUserEmail != null) {
+            User currentUser = userRepository.findByEmail(currentUserEmail).orElse(null);
+            if (currentUser != null) {
+                isFollowing = shop.getFollowers().contains(currentUser);
+            }
         }
 
         // 2. Tarik Data Voucher Aktif Milik Toko Ini
@@ -158,7 +169,30 @@ public class ShopService {
                 .lastActive(lastActiveStr)
                 .activeVouchers(shopVouchers)
                 .featuredProducts(featuredProducts)
+                .followerCount(shop.getFollowerCount()) // Ambil dari DB
+                .isFollowing(isFollowing) // Beritahu React status tombolnya
                 .build();
+    }
+
+    @Transactional
+    public boolean toggleFollowShop(Long shopId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new com.ecommerce.backend.exceptions.ResourceNotFoundException("User tidak ditemukan!"));
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new com.ecommerce.backend.exceptions.ResourceNotFoundException("Toko tidak ditemukan!"));
+
+        boolean isFollowing = shop.getFollowers().contains(user);
+
+        if (isFollowing) {
+            shop.getFollowers().remove(user);
+            shop.setFollowerCount(Math.max(0, shop.getFollowerCount() - 1));
+        } else {
+            shop.getFollowers().add(user);
+            shop.setFollowerCount(shop.getFollowerCount() + 1);
+        }
+
+        shopRepository.save(shop);
+        return !isFollowing; // Return true jika sekarang jadi mengikuti
     }
 
     // Fitur khusus Admin: Melihat daftar toko yang masih pending untuk disetujui atau ditolak

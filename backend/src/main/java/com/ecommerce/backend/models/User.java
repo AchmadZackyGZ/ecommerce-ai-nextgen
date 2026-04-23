@@ -46,6 +46,7 @@ public class User implements org.springframework.security.core.userdetails.UserD
 
     private LocalDateTime lastActive;
 
+    //  User bisa mengikuti banyak Shop, dan Shop bisa memiliki banyak followers (User)
     @ManyToMany(mappedBy = "followers")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
