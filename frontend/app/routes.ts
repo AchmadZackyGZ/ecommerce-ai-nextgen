@@ -1,4 +1,9 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import {
+  type RouteConfig,
+  index,
+  layout,
+  route,
+} from "@react-router/dev/routes";
 
 export default [
   index("routes/home.tsx"),
@@ -13,4 +18,10 @@ export default [
   route("voucher", "routes/voucher.tsx"),
   route("pengaturan", "routes/pengaturan.tsx"),
   route("toko/:id", "routes/toko.$id.tsx"), // Tambahkan route untuk halaman kunjungi toko
+
+  // Route untuk Seller Center
+  layout("routes/seller.tsx", [
+    // Halaman Produk masuk ke dalam layout seller
+    route("seller/products", "routes/seller.products.tsx"),
+  ]),
 ] satisfies RouteConfig;
