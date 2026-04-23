@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, Link } from "react-router";
 import {
   ShoppingCart,
   ArrowLeft,
@@ -363,6 +363,13 @@ export default function ProductDetail() {
                 >
                   <MessageSquare size={14} /> Chat Sekarang
                 </button>
+                {/* 🚀 INI DIA TOMBOL KUNJUNGI TOKO NYA! */}
+                <Link
+                  to={`/toko/${product.shopId}`} // Menggunakan shopId dari ProductResponse
+                  className="px-4 py-2 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-black hover:bg-cyan-500 hover:text-black transition-all border border-cyan-500/30 flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+                >
+                  <Store size={14} /> Kunjungi Toko
+                </Link>
               </div>
             </div>
           </div>

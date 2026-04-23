@@ -27,7 +27,23 @@ public class Shop {
     private String avatarUrl;
 
     private String imageBannerUrl;
+
     private String videoBannerUrl;
+
+    // table system pengikut (many-to-many)
+    @ManyToMany
+    @JoinTable(
+        name = "shop_followers",
+        joinColumns = @JoinColumn(name = "shop_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private java.util.Set<User> followers = new java.util.HashSet<>();
+
+    @Builder.Default
+    private Integer followerCount = 0;
 
     @Default
     private Integer responseRate = 100;

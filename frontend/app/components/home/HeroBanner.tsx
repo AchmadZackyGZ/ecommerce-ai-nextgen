@@ -29,8 +29,8 @@ export default function HeroBanner() {
         </h1>
 
         <p className="mb-8 text-lg font-medium text-zinc-400 md:text-xl max-w-xl">
-          Jelajahi koleksi gadget premium yang dikurasi khusus untuk Anda oleh
-          kecerdasan buatan revolusioner.
+          GADGET PREMIUM, DIPILIH OLEH AI! Harga Murah, Spesifikasi Keren,
+          Diskon Gila!
         </p>
 
         <Link

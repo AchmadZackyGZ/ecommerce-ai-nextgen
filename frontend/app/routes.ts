@@ -12,4 +12,5 @@ export default [
   route("pesanan", "routes/pesanan.tsx"),
   route("voucher", "routes/voucher.tsx"),
   route("pengaturan", "routes/pengaturan.tsx"),
+  route("toko/:id", "routes/toko.$id.tsx"), // Tambahkan route untuk halaman kunjungi toko
 ] satisfies RouteConfig;

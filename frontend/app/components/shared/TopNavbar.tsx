@@ -133,7 +133,7 @@ export default function TopNavbar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari produk teknologi masa depan (Contoh: Sony)..."
+                placeholder="Cari produk yang anda inginkan (Contoh: Sony)..."
                 className="w-full rounded-full border border-white/10 bg-white/5 py-2.5 pl-12 pr-4 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:border-cyan-500/50 focus:bg-black/50 focus:ring-1 focus:ring-cyan-500/50"
               />
             </form>
