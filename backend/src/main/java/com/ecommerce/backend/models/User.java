@@ -46,6 +46,12 @@ public class User implements org.springframework.security.core.userdetails.UserD
 
     private LocalDateTime lastActive;
 
+    @ManyToMany(mappedBy = "followers")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private java.util.Set<Shop> followedShops = new java.util.HashSet<>();
+
     // 🔥 --- EVOLUSI NEXIA V1: RELASI BARU --- 🔥
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
