@@ -44,8 +44,9 @@ public class ShopController {
     }
 
     @GetMapping("/{id}/profile")
-    public ResponseEntity<ApiResponse<ShopProfileResponse>> getShopProfile(@PathVariable Long id) {
-        ShopProfileResponse profile = shopService.getShopProfile(id);
+    public ResponseEntity<ApiResponse<ShopProfileResponse>> getShopProfile(@PathVariable Long id, Principal principal) {
+        String currentUserEmail = principal.getName(); // Ambil email dari token JWT yang dikirim
+        ShopProfileResponse profile = shopService.getShopProfile(id, currentUserEmail);
         
         ApiResponse<ShopProfileResponse> response = ApiResponse.<ShopProfileResponse>builder()
                 .status(200)
@@ -54,5 +55,22 @@ public class ShopController {
                 .build();
                 
         return ResponseEntity.ok(response);
+    }
+
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    @PostMapping("/{id}/follow")
+    public ResponseEntity<com.ecommerce.backend.dtos.ApiResponse<Boolean>> toggleFollow(
+            @PathVariable Long id, 
+            java.security.Principal principal
+    ) {
+        boolean isFollowing = shopService.toggleFollowShop(id, principal.getName());
+        
+        String message = isFollowing ? "Berhasil mengikuti toko!" : "Berhasil berhenti mengikuti toko.";
+        
+        return ResponseEntity.ok(com.ecommerce.backend.dtos.ApiResponse.<Boolean>builder()
+                .status(200)
+                .message(message)
+                .data(isFollowing)
+                .build());
     }
 }
