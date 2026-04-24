@@ -148,7 +148,7 @@ public class ShopService {
                         .id(p.getId())
                         .name(p.getName())
                         .price(p.getPrice())
-                        .imageUrl(p.getImageUrl())
+                        .imageUrls(p.getImageUrls())
                         .category(p.getCategory())
                         .stock(p.getStock())
                         .build())
