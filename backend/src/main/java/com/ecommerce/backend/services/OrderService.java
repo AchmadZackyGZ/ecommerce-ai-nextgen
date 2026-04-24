@@ -195,7 +195,7 @@ public class OrderService {
         String productImageUrl = null;
 
        if(!orderItems.isEmpty()) { 
-           productImageUrl = orderItems.get(0).getVariant().getProduct().getImageUrl();
+           productImageUrl = orderItems.get(0).getVariant().getProduct().getImageUrls().get(0); // Ambil gambar pertama dari produk pertama di order
         }
 
         //  NOTIFIKASI KE BACKGROUND!
