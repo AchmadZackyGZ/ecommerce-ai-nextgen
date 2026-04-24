@@ -56,7 +56,7 @@ public class ProductService {
 
     // membuat product baru (CREATE Product)
    @Transactional 
-    public ProductResponse createProduct(ProductRequest request, MultipartFile image, String variantsJson, String sellerEmail) {
+    public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images, String variantsJson, String sellerEmail) {
 
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!")); 
@@ -68,10 +68,14 @@ public class ProductService {
             throw new BadRequestException("Akses Ditolak: Toko Anda masih berstatus " + shop.getStatus() + ". Tunggu persetujuan Admin untuk mulai berjualan.");
         }
 
-        // 🚀 PROSES UPLOAD GAMBAR KE CLOUDINARY
-        String uploadedImageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            uploadedImageUrl = cloudinaryService.uploadImage(image);
+        // PROSES UPLOAD GAMBAR KE CLOUDINARY dengan array karena agar bisa menampung banyak file
+        List<String> uploadedImageUrl = new ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            for (MultipartFile img : images) {
+                if (!img.isEmpty()) {
+                    uploadedImageUrl.add(cloudinaryService.uploadImage(img));
+                }
+            }
         }
 
         Product product = Product.builder()
@@ -80,7 +84,7 @@ public class ProductService {
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .stock(request.getStock())
-                .imageUrl(uploadedImageUrl)
+                .imageUrls(uploadedImageUrl)
                 .shop(shop) 
                 .build();
 
@@ -149,7 +153,7 @@ public class ProductService {
         existingProduct.setDescription(request.getDescription());
         existingProduct.setPrice(request.getPrice());
         existingProduct.setStock(request.getStock());
-        existingProduct.setImageUrl(request.getImageUrl());
+        existingProduct.setImageUrls(request.getImageUrls());
 
         Product updatedProduct = productRepository.save(existingProduct);
         return mapToResponse(updatedProduct);
@@ -228,7 +232,7 @@ public class ProductService {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .stock(product.getStock())
-                .imageUrl(product.getImageUrl())
+                .imageUrls(product.getImageUrls())
                 .shopId(product.getShop().getId())
                 .shopName(product.getShop().getName())
                 .shopOwnerId(product.getShop().getOwner().getId())
