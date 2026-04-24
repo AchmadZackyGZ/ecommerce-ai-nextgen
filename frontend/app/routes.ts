@@ -23,5 +23,6 @@ export default [
   layout("routes/seller.tsx", [
     // Halaman Produk masuk ke dalam layout seller
     route("seller/products", "routes/seller.products.tsx"),
+    route("seller/products/new", "routes/seller.products.new.tsx"),
   ]),
 ] satisfies RouteConfig;

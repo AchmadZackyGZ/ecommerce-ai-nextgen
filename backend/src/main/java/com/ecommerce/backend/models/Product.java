@@ -37,7 +37,12 @@ public class Product {
     @Column(nullable = false)
     private Integer stock;
 
-    private String imageUrl; // Alamat gambar produk kita nanti
+    // 🔥 EVOLUSI V2: Multi-Image Support! (Hibernate akan otomatis buat tabel product_images)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "image_url")
+    @Builder.Default
+    private java.util.List<String> imageUrls = new java.util.ArrayList<>();
 
     @Column(nullable = false)
     private String category; //  Fitur Kategori untuk memudahkan pencarian dan filter produk di frontend
