@@ -144,7 +144,7 @@ public class ProductService {
     }
 
     // mengupdate product berdasarkan id
-    public ProductResponse updateProduct(Long id, ProductRequest request) {
+    public ProductResponse updateProduct(Long id, ProductRequest request, List<MultipartFile> newImages, String variantsJson) {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
 
@@ -153,11 +153,39 @@ public class ProductService {
         existingProduct.setDescription(request.getDescription());
         existingProduct.setPrice(request.getPrice());
         existingProduct.setStock(request.getStock());
-        existingProduct.setImageUrls(request.getImageUrls());
 
-        Product updatedProduct = productRepository.save(existingProduct);
-        return mapToResponse(updatedProduct);
+        List<String> currentImages = new ArrayList<>(existingProduct.getImageUrls());
+        if (newImages != null && !newImages.isEmpty()) {
+            for (MultipartFile file : newImages) {
+            if (!file.isEmpty()) {
+                currentImages.add(cloudinaryService.uploadImage(file));
+            }
+        }
     }
+        existingProduct.setImageUrls(currentImages);
+
+        // 3. Logika Varian (Hapus lama, pasang baru)
+        existingProduct.getVariants().clear(); // Bersihkan varian lama (Orphan Removal akan bekerja)
+
+        try {
+        if (variantsJson != null && !variantsJson.isEmpty()) {
+            List<Map<String, Object>> variantData = ObjectMapper.readValue(variantsJson, new TypeReference<>() {});
+            for (Map<String, Object> v : variantData) {
+                ProductVariant variant = ProductVariant.builder()
+                        .variantName((String) v.get("name"))
+                        .priceModifier(new BigDecimal(v.get("priceModifier").toString()))
+                        .stock(Integer.parseInt(v.get("stock").toString()))
+                        .product(existingProduct)
+                        .build();
+                existingProduct.getVariants().add(variant);
+            }
+        }
+    } catch (Exception e) {
+        throw new BadRequestException("Format varian tidak valid");
+    }
+    return mapToResponse(productRepository.save(existingProduct));
+}
+
 
     // menghapus product berdasarkan id
     public String deleteProduct(Long id) {

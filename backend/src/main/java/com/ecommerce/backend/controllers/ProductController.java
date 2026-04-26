@@ -81,21 +81,17 @@ public class ProductController {
         return ResponseEntity.ok(response);
     }
 
-    // 4. Endpoint PUT (Mengupdate produk berdasarkan ID)
-    // 🔥 HANYA SELLER DAN ADMIN YANG BOLEH UPDATE
-    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(@PathVariable Long id,@RequestBody ProductRequest productRequest) {
-        ProductResponse updateData = productService.updateProduct(id, productRequest);
-
-        ApiResponse<ProductResponse> response = ApiResponse.<ProductResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Berhasil mengupdate data produk dengan ID: " + id)
-                .data(updateData)
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
+    @PreAuthorize("hasRole('SELLER')")
+@PutMapping("/{id}")
+public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
+        @PathVariable Long id,
+        @ModelAttribute ProductRequest request,
+        @RequestParam(value = "images", required = false) List<MultipartFile> images,
+        @RequestParam(value = "variantsJson", required = false) String variantsJson) {
+    
+    ProductResponse updated = productService.updateProduct(id, request, images, variantsJson);
+    return ResponseEntity.ok(new ApiResponse<>(200, "Produk berhasil diperbarui", updated));
+}
 
     // 5. Endpoint DELETE (Menghapus produk berdasarkan ID)
     // 🔥 HANYA ADMIN YANG BOLEH HAPUS karena 
