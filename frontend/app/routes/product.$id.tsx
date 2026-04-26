@@ -161,7 +161,9 @@ export default function ProductDetail() {
   const withCommentCount = reviews.filter(
     (r) => r.comment && r.comment.trim() !== "",
   ).length;
-  const withMediaCount = reviews.filter((r) => r.imageUrl).length;
+  const withMediaCount = reviews.filter(
+    (r) => r.imageUrls && r.imageUrls.length > 0,
+  ).length;
 
   // 🔍 MESIN FILTER ULASAN
   const filteredReviews = reviews.filter((r) => {
@@ -197,11 +199,13 @@ export default function ProductDetail() {
     );
   }
 
-  const productImages = [
-    product?.imageUrl ||
-      "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500",
-  ];
-
+  const productImages =
+    product?.imageUrls && product.imageUrls.length > 0
+      ? product.imageUrls
+      : [
+          product?.imageUrl || // Cek fallback ke kolom lama jika masih ada di objek
+            "https://via.placeholder.com/600x600?text=Nexia+Premium+Product",
+        ];
   return (
     <main className="min-h-screen pb-32 pt-28 relative">
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
@@ -214,15 +218,46 @@ export default function ProductDetail() {
 
         {/* 📱 AREA ATAS: DETAIL PRODUK */}
         <div className="mb-12 grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* KIRI: Gambar Produk */}
-          <div className="w-full flex flex-col gap-4">
-            <div className="relative aspect-square w-full overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900 shadow-2xl group">
+          {/* KIRI: Gambar Produk & Gallery Multi-Image */}
+          <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-left-4 duration-700">
+            {/* 🖼️ TAMPILAN GAMBAR BESAR */}
+            <div className="relative aspect-square w-full overflow-hidden rounded-[2.5rem] border border-white/10 bg-zinc-900 shadow-2xl group cursor-zoom-in">
               <img
                 src={productImages[activeImageIndex]}
                 alt={product.name}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
+
+              {/* Overlay Badge Foto Utama */}
+              {activeImageIndex === 0 && (
+                <div className="absolute top-6 left-6 bg-cyan-500/90 text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg border border-black/10 backdrop-blur-sm">
+                  Foto Utama
+                </div>
+              )}
             </div>
+
+            {/* 🎞️ THUMBNAIL GALLERY: List gambar kecil di bawah foto utama */}
+            {productImages.length > 1 && (
+              <div className="flex gap-4 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden px-2">
+                {productImages.map((img: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+                      activeImageIndex === idx
+                        ? "border-cyan-400 scale-110 shadow-[0_0_20px_rgba(6,182,212,0.4)] z-10"
+                        : "border-white/5 opacity-40 hover:opacity-100 hover:border-white/20"
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`Preview ${idx}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* KANAN: Checkout & Varian */}

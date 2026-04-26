@@ -145,9 +145,9 @@ export default function CartPage() {
                     {/* Kiri: Info Produk */}
                     <div className="flex w-full md:w-1/2 items-center gap-4 pl-2">
                       <div className="h-20 w-20 md:h-24 md:w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-800 flex items-center justify-center">
-                        {item.imageUrl ? (
+                        {item.imageUrls && item.imageUrls.length > 0 ? (
                           <img
-                            src={item.imageUrl}
+                            src={item.imageUrls[0]}
                             alt={item.productName}
                             className="h-full w-full object-cover"
                           />

@@ -43,7 +43,10 @@ export default function CartDrawer() {
                   {/* Gambar Produk */}
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-zinc-900">
                     <img
-                      src={item.imageUrl}
+                      src={
+                        item.imageUrls?.[0] ||
+                        "https://via.placeholder.com/150?text=No+Image"
+                      }
                       alt={item.name}
                       className="h-full w-full object-cover"
                     />

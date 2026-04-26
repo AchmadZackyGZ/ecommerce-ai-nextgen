@@ -431,9 +431,9 @@ export default function OrderDashboard() {
                       {order.items.map((item: any, idx: number) => (
                         <div key={idx} className="flex items-start gap-4">
                           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/5 flex items-center justify-center">
-                            {item.imageUrl ? (
+                            {item.imageUrls && item.imageUrls.length > 0 ? (
                               <img
-                                src={item.imageUrl}
+                                src={item.imageUrls[0]}
                                 alt={item.productName}
                                 className="h-full w-full object-cover"
                               />
@@ -581,9 +581,10 @@ export default function OrderDashboard() {
                 selectedOrderForReview.items.length === 1 && (
                   <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 p-3">
                     <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-black">
-                      {selectedOrderForReview.items[0].imageUrl ? (
+                      {selectedOrderForReview.items[0].imageUrls &&
+                      selectedOrderForReview.items[0].imageUrls.length > 0 ? (
                         <img
-                          src={selectedOrderForReview.items[0].imageUrl}
+                          src={selectedOrderForReview.items[0].imageUrls[0]}
                           alt="Product"
                           className="h-full w-full object-cover"
                         />

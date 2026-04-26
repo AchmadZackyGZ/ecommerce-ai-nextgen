@@ -34,8 +34,8 @@ export default function SellerNewProduct() {
   const [stock, setStock] = useState("");
 
   // 🖼️ STATE: Upload Gambar
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File[]>([]);
+  const [imagePreview, setImagePreview] = useState<string[]>([]);
 
   // 🗂️ STATE: Varian Dinamis (Sesuai dengan ObjectMapper di Backend)
   const [variants, setVariants] = useState<
@@ -53,13 +53,23 @@ export default function SellerNewProduct() {
 
   //  FUNGSI HANDLER UNTUK GAMBAR
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []); // Ubah FileList menjadi Array
+    if (files.length > 0) {
+      setImageFile((prev) => [...prev, ...files]); // Tambahkan ke state imageFile
+
+      // buat preview untuk setiap file yang diupload
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () =>
+          setImagePreview((prev) => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+      });
     }
+  };
+
+  const RemoveImage = (indexToRemove: number) => {
+    setImageFile((prev) => prev.filter((_, i) => i !== indexToRemove));
+    setImagePreview((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
   //  FUNGSI HANDLER UNTUK VARIAN
@@ -96,8 +106,9 @@ export default function SellerNewProduct() {
       formData.append("price", price);
       formData.append("stock", stock);
 
-      if (imageFile) {
-        formData.append("image", imageFile); // 'image' sesuai @RequestParam di Controller
+      // looping untuk multi-upload file imageUrls
+      if (imageFile.length > 0) {
+        imageFile.forEach((file) => formData.append("images", file));
       }
 
       // Format array Varian menjadi JSON String agar bisa dibaca ObjectMapper Backend
@@ -207,46 +218,67 @@ export default function SellerNewProduct() {
             </div>
           </div>
 
-          {/* Card: Upload Gambar */}
+          {/* Card: Upload Gambar (MULTI-UPLOAD UI) */}
           <div className="bg-zinc-900/40 border border-white/5 rounded-3xl p-6 md:p-8 backdrop-blur-xl">
             <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <ImageIcon className="text-cyan-400" size={20} /> Foto Utama
-              Produk
+              <ImageIcon className="text-cyan-400" size={20} /> Foto Produk
             </h2>
 
-            <div className="relative group">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div
-                className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-10 transition-colors ${imagePreview ? "border-cyan-500/50 bg-cyan-500/5" : "border-white/10 bg-black/50 group-hover:border-cyan-500/30 group-hover:bg-cyan-500/5"}`}
-              >
-                {imagePreview ? (
-                  <div className="relative w-40 h-40 rounded-xl overflow-hidden shadow-2xl border border-white/10">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <UploadCloud className="text-cyan-400" size={32} />
-                    </div>
-                    <p className="text-white font-bold mb-1">
-                      Klik atau Drag foto ke sini
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      PNG, JPG, JPEG (Maks. 2MB)
-                    </p>
-                  </>
-                )}
+            {/* GRID PREVIEW & TOMBOL TAMBAH */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* 1. Looping untuk menampilkan semua foto yang sudah dipilih */}
+              {imagePreview.map((src, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 group shadow-lg bg-black/50"
+                >
+                  <img
+                    src={src}
+                    alt={`Preview ${index}`}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* 🔥 TOMBOL HAPUS (Panggil removeImage) */}
+                  <button
+                    type="button"
+                    onClick={() => RemoveImage(index)}
+                    className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 shadow-lg"
+                    title="Hapus foto ini"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+
+                  {/* Label Foto Utama untuk indeks 0 */}
+                  {index === 0 && (
+                    <span className="absolute bottom-0 left-0 right-0 bg-cyan-500/90 text-black text-[10px] font-black uppercase tracking-widest text-center py-1">
+                      Foto Utama
+                    </span>
+                  )}
+                </div>
+              ))}
+
+              {/* 2. Tombol +Tambah Foto (Akan selalu ada di samping/bawah foto) */}
+              <div className="relative aspect-square rounded-2xl border-2 border-dashed border-white/10 bg-black/30 hover:bg-cyan-500/5 hover:border-cyan-500/30 transition-colors flex flex-col items-center justify-center cursor-pointer group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple // 🔥 Fitur pilih banyak file sekaligus!
+                  onChange={handleImageChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <UploadCloud
+                  className="text-zinc-500 group-hover:text-cyan-400 mb-2 transition-colors"
+                  size={28}
+                />
+                <span className="text-xs text-zinc-500 group-hover:text-cyan-400 font-bold text-center px-2">
+                  {imagePreview.length > 0 ? "Tambah Lagi" : "Pilih Foto"}
+                </span>
               </div>
             </div>
+            <p className="text-xs text-zinc-500 mt-4 flex items-center gap-1.5">
+              <span className="text-cyan-400">*</span> Anda bisa memilih lebih
+              dari 1 foto sekaligus. Format: JPG, PNG.
+            </p>
           </div>
         </div>
 

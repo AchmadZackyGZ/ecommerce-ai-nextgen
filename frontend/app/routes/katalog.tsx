@@ -341,9 +341,9 @@ export default function KatalogPage() {
                       )}
 
                       {/* 🔥 Gambar Asli dari Backend */}
-                      {product.imageUrl ? (
+                      {product.imageUrls && product.imageUrls.length > 0 ? (
                         <img
-                          src={product.imageUrl}
+                          src={product.imageUrls[0]}
                           alt={product.name}
                           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />

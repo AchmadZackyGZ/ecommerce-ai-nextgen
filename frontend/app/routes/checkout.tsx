@@ -348,7 +348,11 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex gap-4 items-start">
                     <div className="h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10">
                       <img
-                        src={item.imageUrl}
+                        src={
+                          item.imageUrls && item.imageUrls.length > 0
+                            ? item.imageUrls[0]
+                            : "/placeholder-image.jpg"
+                        }
                         alt={item.productName}
                         className="h-full w-full object-cover"
                       />

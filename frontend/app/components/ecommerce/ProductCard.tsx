@@ -8,7 +8,7 @@ export interface ProductProps {
   name: string;
   price: number;
   category: string;
-  imageUrl: string;
+  imageUrls: string[];
 }
 
 export default function ProductCard({ product }: { product: ProductProps }) {
@@ -18,7 +18,10 @@ export default function ProductCard({ product }: { product: ProductProps }) {
         {/* Wadah Gambar dengan efek Zoom saat di-hover */}
         <div className="relative mb-4 flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-zinc-950">
           <img
-            src={product.imageUrl}
+            src={
+              product.imageUrls?.[0] ||
+              "https://via.placeholder.com/300?text=No+Image"
+            }
             alt={product.name}
             className="h-full w-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-110 group-hover:opacity-100"
           />

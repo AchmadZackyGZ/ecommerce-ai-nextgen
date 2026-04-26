@@ -174,7 +174,11 @@ export default function SellerProducts() {
                     <td className="p-4">
                       <div className="w-12 h-12 rounded-lg bg-zinc-800 overflow-hidden border border-white/10">
                         <img
-                          src={product.imageUrl}
+                          src={
+                            product.imageUrls && product.imageUrls.length > 0
+                              ? product.imageUrls[0]
+                              : "/placeholder.jpg"
+                          }
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />
