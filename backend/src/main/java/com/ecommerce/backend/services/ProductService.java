@@ -6,10 +6,8 @@ import com.ecommerce.backend.dtos.ProductVariantResponse;
 import com.ecommerce.backend.models.Product;
 import com.ecommerce.backend.models.ProductVariant;
 import com.ecommerce.backend.models.Shop;
-import com.ecommerce.backend.models.ShopStatus;
 import com.ecommerce.backend.models.User;
 import com.ecommerce.backend.repositories.ProductRepository;
-import com.ecommerce.backend.repositories.ProductVariantRepository;
 import com.ecommerce.backend.repositories.ReviewRepository;
 import com.ecommerce.backend.repositories.ShopRepository;
 import com.ecommerce.backend.repositories.UserRepository;
@@ -18,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.transaction.Transactional;
+import org.springframework.context.annotation.Lazy;
 
 import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
@@ -48,84 +47,48 @@ public class ProductService {
     private ReviewRepository reviewRepository;
 
     @Autowired
+    @Lazy // Untuk menghindari circular dependency dengan CloudinaryService
     private CloudinaryService cloudinaryService;
 
-    // 🔥 KUNCI V1: Kita butuh repository varian
-    @Autowired
-    private ProductVariantRepository productVariantRepository; 
+    // 🔥 FIX: Kita instansiasi langsung agar Spring tidak bingung mencari Bean!
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // membuat product baru (CREATE Product)
-   @Transactional 
+  @Transactional
     public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images, String variantsJson, String sellerEmail) {
-
         User seller = userRepository.findByEmail(sellerEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!")); 
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan"));
 
         Shop shop = shopRepository.findByOwner(seller)
-                .orElseThrow(() -> new BadRequestException("Anda belum memiliki toko! Silakan buka toko terlebih dahulu."));
+                .orElseThrow(() -> new ResourceNotFoundException("Toko tidak ditemukan!"));
 
-        if (shop.getStatus() != ShopStatus.APPROVED) {
-            throw new BadRequestException("Akses Ditolak: Toko Anda masih berstatus " + shop.getStatus() + ". Tunggu persetujuan Admin untuk mulai berjualan.");
-        }
-
-        // PROSES UPLOAD GAMBAR KE CLOUDINARY dengan array karena agar bisa menampung banyak file
-        List<String> uploadedImageUrl = new ArrayList<>();
+        // 1. Upload Gambar
+        List<String> uploadedImageUrls = new ArrayList<>();
         if (images != null && !images.isEmpty()) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
-                    uploadedImageUrl.add(cloudinaryService.uploadImage(img));
+                    uploadedImageUrls.add(cloudinaryService.uploadImage(img));
                 }
             }
         }
 
+        // 2. Build Produk
         Product product = Product.builder()
                 .name(request.getName())
-                .category(request.getCategory()) //  Jangan lupa set kategori dari request ke entity!
+                .category(request.getCategory())
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .stock(request.getStock())
-                .imageUrls(uploadedImageUrl)
-                .shop(shop) 
+                .imageUrls(uploadedImageUrls)
+                .shop(shop)
+                .variants(new ArrayList<>())
                 .build();
 
-        Product savedProduct = productRepository.save(product); 
+        // 3. Parsing Varian (Gunakan variantsJson agar sinkron dengan Controller)
+        parseVariants(product, variantsJson, request.getStock());
 
-        // 🔥 LOGIKA V1 MUTAKHIR: MEMBACA JSON VARIAN DARI POSTMAN!
-        List<ProductVariant> savedVariants = new ArrayList<>();
-
-        if (variantsJson != null && !variantsJson.isEmpty()) {
-            try {
-                // Mesin Penerjemah JSON ke Java
-                ObjectMapper mapper = new ObjectMapper();
-                List<Map<String, Object>> variantList = mapper.readValue(variantsJson, new TypeReference<List<Map<String, Object>>>() {});
-                
-                // Looping dan buat Varian satu per satu
-                for (Map<String, Object> varData : variantList) {
-                    ProductVariant variant = ProductVariant.builder()
-                            .product(savedProduct)
-                            .variantName(varData.get("name").toString())
-                            .priceModifier(new BigDecimal(varData.get("priceModifier").toString()))
-                            .stock(Integer.parseInt(varData.get("stock").toString()))
-                            .build();
-                    savedVariants.add(productVariantRepository.save(variant));
-                }
-            } catch (Exception e) {
-                throw new BadRequestException("Format varian salah! Pastikan menggunakan JSON Array yang benar di Postman.");
-            }
-        } else {
-            // 🛡️ FALLBACK: Jika di Postman lupa diisi variannya, kita buatkan "Original"
-            ProductVariant defaultVariant = ProductVariant.builder()
-                    .product(savedProduct)
-                    .variantName("Original")
-                    .priceModifier(BigDecimal.ZERO)
-                    .stock(request.getStock())
-                    .build();
-            savedVariants.add(productVariantRepository.save(defaultVariant));
-        }
-
-        savedProduct.setVariants(savedVariants);
-
-        return mapToResponse(savedProduct);
+       // ✅ PANGGIL REPOSITORY UNTUK SAVE
+        return mapToResponse(productRepository.save(product));
     }
 
     // mengambil semua product (READ Product)
@@ -143,48 +106,34 @@ public class ProductService {
         return mapToResponse(product);
     }
 
-    // mengupdate product berdasarkan id
+   @Transactional
     public ProductResponse updateProduct(Long id, ProductRequest request, List<MultipartFile> newImages, String variantsJson) {
-        Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan dengan ID: " + id));
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan"));
 
-        existingProduct.setName(request.getName());
-        existingProduct.setCategory(request.getCategory()); // Jangan lupa update kategori juga!
-        existingProduct.setDescription(request.getDescription());
-        existingProduct.setPrice(request.getPrice());
-        existingProduct.setStock(request.getStock());
+        // Update Data Dasar
+        product.setName(request.getName());
+        product.setCategory(request.getCategory());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock());
 
-        List<String> currentImages = new ArrayList<>(existingProduct.getImageUrls());
+        // Update Gambar (Jika ada gambar baru, tambahkan ke list)
         if (newImages != null && !newImages.isEmpty()) {
             for (MultipartFile file : newImages) {
-            if (!file.isEmpty()) {
-                currentImages.add(cloudinaryService.uploadImage(file));
+                if (!file.isEmpty()) {
+                    product.getImageUrls().add(cloudinaryService.uploadImage(file));
+                }
             }
         }
-    }
-        existingProduct.setImageUrls(currentImages);
 
-        // 3. Logika Varian (Hapus lama, pasang baru)
-        existingProduct.getVariants().clear(); // Bersihkan varian lama (Orphan Removal akan bekerja)
+        // Reset dan Update Varian
+        product.getVariants().clear();
+        parseVariants(product, variantsJson, request.getStock());
 
-        try {
-        if (variantsJson != null && !variantsJson.isEmpty()) {
-            List<Map<String, Object>> variantData = ObjectMapper.readValue(variantsJson, new TypeReference<>() {});
-            for (Map<String, Object> v : variantData) {
-                ProductVariant variant = ProductVariant.builder()
-                        .variantName((String) v.get("name"))
-                        .priceModifier(new BigDecimal(v.get("priceModifier").toString()))
-                        .stock(Integer.parseInt(v.get("stock").toString()))
-                        .product(existingProduct)
-                        .build();
-                existingProduct.getVariants().add(variant);
-            }
-        }
-    } catch (Exception e) {
-        throw new BadRequestException("Format varian tidak valid");
+        // ✅ PANGGIL REPOSITORY UNTUK SAVE
+        return mapToResponse(productRepository.save(product));
     }
-    return mapToResponse(productRepository.save(existingProduct));
-}
 
 
     // menghapus product berdasarkan id
@@ -202,21 +151,37 @@ public class ProductService {
         return deletedProductName;
     }
 
+    // Helper untuk menghindari duplikasi kode parsing varian
+    private void parseVariants(Product product, String variantsJson, Integer defaultStock) {
+        try {
+            if (variantsJson != null && !variantsJson.isEmpty()) {
+                List<Map<String, Object>> variantData = objectMapper.readValue(variantsJson, new TypeReference<>() {});
+                for (Map<String, Object> v : variantData) {
+                    ProductVariant variant = ProductVariant.builder()
+                            .variantName((String) v.get("name"))
+                            .priceModifier(new BigDecimal(v.get("priceModifier").toString()))
+                            .stock(Integer.parseInt(v.get("stock").toString()))
+                            .product(product)
+                            .build();
+                    product.getVariants().add(variant);
+                }
+            } else {
+                product.getVariants().add(ProductVariant.builder()
+                        .variantName("Original")
+                        .priceModifier(BigDecimal.ZERO)
+                        .stock(defaultStock)
+                        .product(product)
+                        .build());
+            }
+        } catch (Exception e) {
+            throw new BadRequestException("Gagal memproses varian: " + e.getMessage());
+        }
+    }
+
     //  HELPER V1: MENGUBAH ENTITY MENJADI RESPONSE BESERTA VARIAN-NYA!
     private ProductResponse mapToResponse(Product product) {
-        
-        // Bongkar daftar varian dari database, masukkan ke dalam kardus DTO
-        List<ProductVariantResponse> variantResponses = new ArrayList<>();
-        if (product.getVariants() != null) {
-            variantResponses = product.getVariants().stream().map(variant -> 
-                ProductVariantResponse.builder()
-                    .id(variant.getId())
-                    .variantName(variant.getVariantName())
-                    .priceModifier(variant.getPriceModifier())
-                    .stock(variant.getStock())
-                    .build()
-            ).collect(Collectors.toList());
-        }
+
+        Shop shop = product.getShop();
 
         // LOGIKA DINAMIS 1: Hitung Rata-Rata Rating Toko dari Database
         Double averageRating = reviewRepository.getAverageRatingByShopId(product.getShop().getId());
@@ -253,24 +218,34 @@ public class ProductService {
         Integer rate = product.getShop().getResponseRate();
         String responseRateStr = (rate != null ? rate : 100) + "%";
 
+        // 🌟 LOGIKA DINAMIS 6: Mapping Varian
+        List<ProductVariantResponse> variantResponses = product.getVariants().stream()
+                .map(v -> ProductVariantResponse.builder()
+                        .id(v.getId())
+                        .variantName(v.getVariantName())
+                        .priceModifier(v.getPriceModifier())
+                        .stock(v.getStock())
+                        .build())
+                .collect(Collectors.toList());
+
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
-                .category(product.getCategory()) //  Jangan lupa sertakan kategori di response juga!
-                .description(product.getDescription())
                 .price(product.getPrice())
                 .stock(product.getStock())
+                .category(product.getCategory())
+                .description(product.getDescription())
                 .imageUrls(product.getImageUrls())
-                .shopId(product.getShop().getId())
-                .shopName(product.getShop().getName())
-                .shopOwnerId(product.getShop().getOwner().getId())
-                .shopAvatar(product.getShop().getAvatarUrl()) // Ambil avatar toko dari database
-                .shopRating(averageRating) 
-                .shopTotalProducts(totalProducts) 
+                .shopId(shop.getId())
+                .shopName(shop.getName())
+                .shopOwnerId(shop.getOwner().getId())
+                .shopAvatar(shop.getAvatarUrl())
+                .shopRating(averageRating)
+                .shopTotalProducts(totalProducts)
                 .shopJoinDate(joinDateStr)
                 .shopResponseRate(responseRateStr)
                 .shopLastActive(lastActiveStr)
-                .variants(variantResponses) //  KITA SELIPKAN DATA VARIAN DI SINI!
+                .variants(variantResponses)
                 .createdAt(product.getCreatedAt())
                 .build();
     }
