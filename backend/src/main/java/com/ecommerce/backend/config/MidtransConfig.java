@@ -2,10 +2,13 @@ package com.ecommerce.backend.config;
 
 import com.midtrans.Midtrans;
 import jakarta.annotation.PostConstruct;
+import lombok.Data;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@Data
 public class MidtransConfig {
     
     @Value("${midtrans.server-key}")
