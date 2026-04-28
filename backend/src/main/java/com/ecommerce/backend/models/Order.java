@@ -20,6 +20,9 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true)
+    private String invoiceId; 
+
     // Siapa yang belanja?
     // 🔥 PENTING: Relasi ke User, bukan hanya menyimpan userId. Kita butuh akses ke data user untuk berbagai keperluan (misal: nama pembeli di struk, email untuk notifikasi, dll).
     @ManyToOne // Banyak order bisa dibuat oleh satu user
@@ -50,6 +53,11 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private EscrowStatus escrowStatus = EscrowStatus.PENDING;
 
     @Column(nullable = false)
     private LocalDateTime orderDate;
