@@ -1,5 +1,6 @@
 package com.ecommerce.backend.services;
 
+import com.ecommerce.backend.dtos.CheckoutRequest;
 import com.ecommerce.backend.dtos.OrderItemResponse;
 import com.ecommerce.backend.dtos.OrderRequest;
 import com.ecommerce.backend.dtos.OrderResponse;
@@ -36,9 +37,10 @@ public class OrderService {
     @Autowired private ProductVariantRepository productVariantRepository;
     @Autowired private AddressRepository addressRepository;
     @Autowired private ApplicationEventPublisher eventPublisher; //  INI UNTUK MENERBITKAN EVENT NOTIFIKASI
-
+    @Autowired private MidtransService midtransService; 
+    
     @Transactional
-    public OrderResponse checkout(OrderRequest request, String userEmail) {
+    public OrderResponse checkout(OrderRequest request, String userEmail, CheckoutRequest checkoutRequest) {
         
         // 1. Cari User dan Keranjangnya
         User user = userRepository.findByEmail(userEmail)
