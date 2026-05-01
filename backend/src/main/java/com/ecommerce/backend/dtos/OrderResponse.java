@@ -10,12 +10,14 @@ import java.util.List;
 @Builder
 public class OrderResponse {
     private Long orderId;
+    private String invoiceId;
     private String customerName;
     private String shippingAddress;
     private BigDecimal subTotal;
     private BigDecimal discount;
     private BigDecimal grandTotal;
     private String status;
+    private String escrowStatus; // 🔥 TAMBAHAN BARU
     private LocalDateTime orderDate;
     private String voucherCodeUsed; // Null jika tidak pakai
     // 🔥 TAMBAHAN BARU: Balikan data Midtrans ke React

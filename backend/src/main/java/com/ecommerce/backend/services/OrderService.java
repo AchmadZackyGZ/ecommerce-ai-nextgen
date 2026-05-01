@@ -18,9 +18,11 @@ import com.ecommerce.backend.events.OrderStatusEvent; // 🔥 IMPORT EVENT NOTIF
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,7 +42,7 @@ public class OrderService {
     @Autowired private MidtransService midtransService; 
     
     @Transactional
-    public OrderResponse checkout(OrderRequest request, String userEmail, CheckoutRequest checkoutRequest) {
+    public OrderResponse checkout(OrderRequest request, String userEmail) {
         
         // 1. Cari User dan Keranjangnya
         User user = userRepository.findByEmail(userEmail)
@@ -119,14 +121,21 @@ public class OrderService {
             grandTotal = BigDecimal.ZERO;
         }
 
+        // 🔥 INTEGRASI FASE 1: GENERATE INVOICE ID
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String shortId = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String invoiceId = "INV-" + dateStr + "-" + shortId;
+
        // 🔥 5. BUAT DRAF PESANAN (Menambahkan data metode pembayaran & pengiriman dari Frontend)
        Order order = Order.builder()
+                .invoiceId(invoiceId) // 🔥 INI DIA INVOICE ID UNIKNYA!
                 .user(user)
                 .shippingAddress(shippingAddress) 
                 .subTotal(subTotal)
                 .discount(discount)
                 .grandTotal(grandTotal)
                 .status(OrderStatus.PENDING)
+                .escrowStatus(EscrowStatus.PENDING)
                 .orderDate(LocalDateTime.now())
                 .voucher(validVoucher)
                 .shippingMethod(request.getShippingMethod()) 
@@ -165,30 +174,15 @@ public class OrderService {
         // 🚀 6. THE MAGIC MOMENT: PANGGIL MIDTRANS JIKA BUKAN COD! 🚀
         if (request.getPaymentMethod() != null && request.getPaymentMethod().equalsIgnoreCase("bank_transfer")) {
             try {
-                // Siapkan Map/JSON untuk dikirim ke Midtrans
-                Map<String, Object> params = new HashMap<>();
-
-                // Detail Transaksi
-                Map<String, String> transactionDetails = new HashMap<>();
-                transactionDetails.put("order_id", "NEXIA-" + savedOrder.getId());
-                transactionDetails.put("gross_amount", savedOrder.getGrandTotal().longValue() + "");
-
-                // Detail Customer
-                Map<String, String> customerDetails = new HashMap<>();
-                customerDetails.put("first_name", user.getName());
-                customerDetails.put("email", user.getEmail());
-                customerDetails.put("phone", shippingAddress.getPhoneNumber());
-
-                params.put("transaction_details", transactionDetails);
-                params.put("customer_details", customerDetails);
-
-                // Tembak API Midtrans untuk mendapatkan Snap Token!
-                String snapToken = SnapApi.createTransactionToken(params);
+               // 🔥 Kita panggil MidtransService yang jauh lebih rapi
+                String snapToken = midtransService.generateSnapToken(savedOrder);
                 
-                // Simpan token ke database
-                savedOrder.setSnapToken(snapToken);
-                orderRepository.save(savedOrder);
-                
+                if (snapToken != null) {
+                    savedOrder.setSnapToken(snapToken);
+                    orderRepository.save(savedOrder);
+                } else {
+                    throw new RuntimeException("Gagal mendapatkan Snap Token dari Midtrans!");
+                }
             } catch (Exception e) {
                 throw new RuntimeException("Gagal menghubungi Payment Gateway: " + e.getMessage());
             }
@@ -305,12 +299,14 @@ public class OrderService {
 
         return OrderResponse.builder()
                 .orderId(order.getId())
+                .invoiceId(order.getInvoiceId()) // 🔥 BARU: Agar frontend bisa mencetak Invoice
                 .customerName(order.getUser().getName())
                 .shippingAddress(order.getShippingAddress().getFullAddress()) 
                 .subTotal(order.getSubTotal())
                 .discount(order.getDiscount())
                 .grandTotal(order.getGrandTotal())
                 .status(order.getStatus().name())
+                .escrowStatus(order.getEscrowStatus() != null ? order.getEscrowStatus().name() : "PENDING") // 🔥 BARU
                 .orderDate(order.getOrderDate())
                 .voucherCodeUsed(order.getVoucher() != null ? order.getVoucher().getCode() : null)
                 .paymentMethod(order.getPaymentMethod()) // BARU

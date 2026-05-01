@@ -27,6 +27,7 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
             @RequestBody OrderRequest request, //  Spring Boot otomatis menangkap addressId di sini!
             Principal principal 
+
     ) {
         // Panggil otak kasir kita!
         OrderResponse orderResponse = orderService.checkout(request, principal.getName());
