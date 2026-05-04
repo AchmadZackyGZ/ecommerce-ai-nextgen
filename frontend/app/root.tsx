@@ -34,6 +34,7 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
   return (
     <html lang="en">
       <head>
@@ -41,6 +42,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <script
+          src="https://app.sandbox.midtrans.com/snap/snap.js"
+          data-client-key={clientKey}
+        ></script>
       </head>
       <body className="bg-zinc-950 text-white antialiased">
         {children}
