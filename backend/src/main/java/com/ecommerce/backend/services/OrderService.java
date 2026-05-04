@@ -1,6 +1,5 @@
 package com.ecommerce.backend.services;
 
-import com.ecommerce.backend.dtos.CheckoutRequest;
 import com.ecommerce.backend.dtos.OrderItemResponse;
 import com.ecommerce.backend.dtos.OrderRequest;
 import com.ecommerce.backend.dtos.OrderResponse;
@@ -8,7 +7,7 @@ import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
 import com.ecommerce.backend.models.*;
 import com.ecommerce.backend.repositories.*;
-import com.midtrans.httpclient.SnapApi; // 🔥 IMPORT CORE MIDTRANS
+
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,9 +18,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
+
 import java.util.List;
-import java.util.Map;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
