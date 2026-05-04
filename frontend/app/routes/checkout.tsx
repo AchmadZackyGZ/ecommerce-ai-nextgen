@@ -21,6 +21,12 @@ import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
 import { apiClient } from "~/services/apiClient";
 
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
+
 export const meta = () =>
   generateMeta("Checkout", "Selesaikan pembayaran pesanan Nexia Anda.");
 
@@ -103,19 +109,6 @@ export default function CheckoutPage() {
         "https://upload.wikimedia.org/wikipedia/commons/2/2e/BRI_2020.svg",
     },
   ];
-
-  useEffect(() => {
-    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
-    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
-    const script = document.createElement("script");
-    script.src = snapScript;
-    script.setAttribute("data-client-key", clientKey);
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
 
   const fetchData = async () => {
     try {
