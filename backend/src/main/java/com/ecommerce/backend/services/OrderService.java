@@ -39,6 +39,7 @@ public class OrderService {
     @Autowired private AddressRepository addressRepository;
     @Autowired private ApplicationEventPublisher eventPublisher; //  INI UNTUK MENERBITKAN EVENT NOTIFIKASI
     @Autowired private MidtransService midtransService; 
+    @Autowired private ShopTransactionRepository shopTransactionRepository;
     
     @Transactional
     public OrderResponse checkout(OrderRequest request, String userEmail) {
@@ -277,8 +278,43 @@ public class OrderService {
             throw new BadRequestException("Gagal! Pesanan ini berstatus " + order.getStatus().name() + ". Hanya pesanan SHIPPED yang bisa diselesaikan.");
         }
 
+        // 1. UPDATE STATUS ORDER & ESCROW
         order.setStatus(OrderStatus.COMPLETED);
+        order.setEscrowStatus(EscrowStatus.RELEASED); // 🔥 DANA DICAIRKAN!
+
+        // 2. CARI TOKO YANG MENJUAL BARANG INI (Ambil dari item pertama)
+        Shop shop = order.getOrderItems().get(0).getVariant().getProduct().getShop();
+
+        // 3. KALKULASI REVENUE CUT (Potongan Admin Nexia 1%)
+        BigDecimal grandTotal = order.getGrandTotal();
+        BigDecimal platformFeePercentage = new BigDecimal("0.01"); // 1%
+        BigDecimal platformFee = grandTotal.multiply(platformFeePercentage).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal netEarnings = grandTotal.subtract(platformFee); // 99% Bersih untuk Penjual
+
+        // 4. TAMBAHKAN UANG KE BRANKAS TOKO
+        shop.setBalance(shop.getBalance().add(netEarnings));
+        shopRepository.save(shop);
+
+        // 5. CATAT DI BUKU MUTASI TRANSAKSI TOKO
+        ShopTransaction transaction = ShopTransaction.builder()
+                .shop(shop)
+                .order(order)
+                .amount(netEarnings)
+                .platformFee(platformFee)
+                .type("EARNING")
+                .description("Pendapatan dari pesanan " + order.getInvoiceId())
+                .build();
+        shopTransactionRepository.save(transaction);
+
         Order savedOrder = orderRepository.save(order);
+
+        //  KIRIM NOTIFIKASI KE SELLER BAHWA UANG SUDAH MASUK (Opsional)
+        eventPublisher.publishEvent(new OrderStatusEvent(
+                shop.getOwner(),
+                "Dana Telah Cair!",
+                "Pesanan " + order.getInvoiceId() + " telah selesai. Dana sebesar Rp " + netEarnings + " telah masuk ke Saldo Toko Anda.",
+                null
+        ));
 
         return mapToOrderResponse(savedOrder, savedOrder.getOrderItems());
     }
