@@ -60,6 +60,11 @@ public class Shop {
     @EqualsAndHashCode.Exclude // Untuk menghindari masalah saat membandingkan objek Shop karena relasi dua arah
     private User owner;
 
+    // 🔥 THE FINANCIAL ENGINE: Brankas Uang Toko (Saldo)
+    @Builder.Default
+    @Column(nullable = false)
+    private java.math.BigDecimal balance = java.math.BigDecimal.ZERO;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
