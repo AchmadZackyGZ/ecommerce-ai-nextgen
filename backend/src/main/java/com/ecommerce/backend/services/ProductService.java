@@ -199,19 +199,19 @@ public class ProductService {
             else joinDateStr = (days / 365) + " Tahun Lalu";
         }
 
-        // LOGIKA DINAMIS 4: Kalkulator Status Online (Last Active)
-        String lastActiveStr = "Offline";
-        LocalDateTime lastActive = product.getShop().getOwner().getLastActive();
+       // LOGIKA DINAMIS 4: Kalkulator Status Online (Last Active)
+        String lastActiveStr = "Baru Saja Aktif"; // Default fallback
+        User shopOwner = product.getShop().getOwner();
 
-        if(lastActive != null) {
-            long minutes = ChronoUnit.MINUTES.between(lastActive, LocalDateTime.now());
+        // Cek aman agar tidak terjadi NullPointerException (Error 500)
+        if (shopOwner != null && shopOwner.getLastActive() != null) {
+            long minutes = ChronoUnit.MINUTES.between(shopOwner.getLastActive(), LocalDateTime.now());
+            if (minutes < 0) minutes = 0; // Cegah minus
+
             if (minutes < 1) lastActiveStr = "Baru Saja Aktif";
             else if (minutes < 60) lastActiveStr = "Aktif " + minutes + " Menit Lalu";
             else if (minutes < 1440) lastActiveStr = "Aktif " + (minutes / 60) + " Jam Lalu";
             else lastActiveStr = "Aktif " + (minutes / 1440) + " Hari Lalu";
-        } else {
-            // Jika user baru daftar dan belum terekam lastActive-nya
-            lastActiveStr = "Baru Saja Aktif";
         }
 
         // LOGIKA DINAMIS 5: Format Performa Chat

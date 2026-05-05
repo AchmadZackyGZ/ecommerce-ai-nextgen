@@ -65,6 +65,8 @@ export default function App() {
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
 
+  const isSellerPage = location.pathname.startsWith("/seller");
+
   useEffect(() => {
     if (!token && !isAuthPage) {
       navigate("/login");
@@ -79,7 +81,7 @@ export default function App() {
   return (
     <>
       {/* Tampilkan Navbar & AI Chat HANYA jika bukan di halaman Login/Register */}
-      {!isAuthPage && (
+      {!isAuthPage && !isSellerPage && (
         <>
           <TopNavbar />
           <FloatingNav />
