@@ -4,7 +4,6 @@ import com.ecommerce.backend.dtos.PaymentRequest;
 import com.ecommerce.backend.dtos.PaymentResponse;
 import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
-import com.ecommerce.backend.models.EscrowStatus;
 import com.ecommerce.backend.models.Order;
 import com.ecommerce.backend.models.OrderStatus;
 import com.ecommerce.backend.models.Payment;

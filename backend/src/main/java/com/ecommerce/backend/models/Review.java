@@ -30,6 +30,13 @@ public class Review {
     @EqualsAndHashCode.Exclude
     private User user;
 
+    // 🔥 TAMBAHAN BARU: Mengikat Review ke Transaksi Spesifik!
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Order order;
+
     @Column(nullable = false)
     private Integer rating; // Nilai Bintang 1 - 5
 
