@@ -7,6 +7,7 @@ import {
   Settings,
   LogOut,
   Store,
+  Wallet,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { useAuthStore } from "~/store/authStore"; // 🔥 Import State User
@@ -45,6 +46,7 @@ export default function SellerLayout() {
     { name: "Dashboard", path: "/seller", icon: LayoutDashboard },
     { name: "Produk Saya", path: "/seller/products", icon: Package },
     { name: "Pesanan", path: "/seller/orders", icon: ShoppingCart },
+    { name: "Keuangan", path: "/seller/finance", icon: Wallet },
     { name: "Pengaturan Toko", path: "/seller/settings", icon: Settings },
   ];
 

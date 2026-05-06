@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -18,4 +19,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // 🔥 FITUR SELLER BARU: Mencari semua pesanan yang mengandung produk dari toko ini
     @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi WHERE oi.variant.product.shop = :shop")
     List<Order> findOrdersByShop(@Param("shop") Shop shop);
+
+    Optional<Order> findByInvoiceId(String invoiceId);
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
 import {
   Wallet,
   TrendingUp,
@@ -10,6 +9,7 @@ import {
   AlertCircle,
   X,
   CheckCircle,
+  Clock,
 } from "lucide-react";
 import { generateMeta } from "~/utils/seo";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ export const meta = () =>
 export default function SellerFinance() {
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState<number>(0);
+  const [heldBalance, setHeldBalance] = useState<number>(0); // 🔥 STATE BARU UNTUK SALDO TERTENTU
   const [transactions, setTransactions] = useState<any[]>([]);
 
   // Modal State
@@ -36,41 +37,15 @@ export default function SellerFinance() {
     { id: "bri", name: "BRI" },
   ];
 
-  // Fetch Data (Nanti kita hubungkan ke Backend di tahap selanjutnya)
+  // 🔥 FETCH DATA DINAMIS DARI DATABASE
   useEffect(() => {
     const fetchFinanceData = async () => {
       try {
         setIsLoading(true);
-        // Simulasi hit API sebelum Backend siap
-        // const res = await apiClient.get("/finance/shop");
-        // setBalance(res.data.balance);
-        // setTransactions(res.data.transactions);
-
-        // DUMMY DATA SEMENTARA AGAR UI BISA DILIHAT
-        setBalance(12500000);
-        setTransactions([
-          {
-            id: 1,
-            type: "EARNING",
-            amount: 2500000,
-            description: "Pendapatan dari pesanan INV-20260504-ABCD",
-            date: "2026-05-04T10:30:00",
-          },
-          {
-            id: 2,
-            type: "WITHDRAWAL",
-            amount: 5000000,
-            description: "Penarikan Dana ke BCA",
-            date: "2026-05-02T14:15:00",
-          },
-          {
-            id: 3,
-            type: "EARNING",
-            amount: 15000000,
-            description: "Pendapatan dari pesanan INV-20260501-XYZQ",
-            date: "2026-05-01T09:20:00",
-          },
-        ]);
+        const res = await apiClient.get("/finance/shop");
+        setBalance(res.data.data.balance);
+        setHeldBalance(res.data.data.heldBalance); // Ambil saldo escrow
+        setTransactions(res.data.data.transactions);
       } catch (error) {
         toast.error("Gagal memuat data keuangan.");
       } finally {
@@ -91,9 +66,7 @@ export default function SellerFinance() {
 
     try {
       setIsWithdrawing(true);
-      // Nanti ini menembak API Midtrans IRIS di Backend
       // await apiClient.post("/finance/withdraw", { amount: amountNum, bank: selectedBank });
-
       toast.success("Permintaan penarikan dana berhasil diproses!");
       setIsWithdrawModalOpen(false);
       setWithdrawAmount("");
@@ -138,7 +111,7 @@ export default function SellerFinance() {
                 </span>
               </div>
 
-              <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400 mb-8 tracking-tight">
+              <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400 mb-6 tracking-tight">
                 Rp {balance.toLocaleString("id-ID")}
               </h2>
 
@@ -149,6 +122,21 @@ export default function SellerFinance() {
                 <ArrowUpRight size={20} /> Tarik Saldo
               </button>
             </div>
+          </div>
+
+          {/* 🔥 UI BARU: KARTU SALDO TERTAHAN (ESCROW) */}
+          <div className="flex items-center justify-between bg-zinc-900/40 p-5 rounded-2xl border border-white/5 shadow-lg backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-500/10 rounded-lg">
+                <Clock size={20} className="text-yellow-500" />
+              </div>
+              <span className="text-sm font-bold text-zinc-300">
+                Saldo Tertahan (Escrow)
+              </span>
+            </div>
+            <span className="text-lg font-black text-yellow-500">
+              Rp {heldBalance.toLocaleString("id-ID")}
+            </span>
           </div>
 
           <div className="rounded-3xl border border-white/5 bg-black/20 p-6">
@@ -234,6 +222,7 @@ export default function SellerFinance() {
       {/* MODAL TARIK DANA */}
       {isWithdrawModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+          {/* ... SISA KODE MODAL TETAP SAMA ... */}
           <div className="w-full max-w-md rounded-[2rem] bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-white/10 bg-zinc-900/50">
               <h3 className="text-xl font-black text-white flex items-center gap-2">
