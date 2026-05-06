@@ -138,36 +138,44 @@ public class PaymentService {
         }
     }
 
-    // --- FITUR BARU: MENANGKAP SINYAL WEBHOOK DARI MIDTRANS ---
-    @Transactional // Pastikan semua operasi database di dalam method ini berjalan atomik
+   // --- FITUR BARU: MENANGKAP SINYAL WEBHOOK DARI MIDTRANS ---
+    @Transactional 
     public void processMidtransNotification(MidtransNotificationRequest notification) {
         String transactionStatus = notification.getTransactionStatus();
         String fraudStatus = notification.getFraudStatus();
-        String midtransOrderId = notification.getOrderId(); // Format: ORD-1-1772xxx
+        String midtransOrderId = notification.getOrderId(); // Berisi: INV-20260506-6A15
 
-        // 🔥 TRIK ARSITEK: Bedah string "ORD-1-12345" untuk mengambil angka "1" (ID asli di database kita)
-        String[] parts = midtransOrderId.split("-");
-        if (parts.length < 2) {
-            throw new RuntimeException("Format Order ID Midtrans tidak dikenali: " + midtransOrderId);
+        Order order = null;
+
+        // 🔥 FIX: Deteksi Cerdas Format Order ID
+        if (midtransOrderId.startsWith("INV-")) {
+            // Jika resinya pakai INV-, cari langsung di kolom invoiceId
+            order = orderRepository.findByInvoiceId(midtransOrderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan dari Webhook! Invoice: " + midtransOrderId));
+        } else {
+            // Fallback (Jika resinya pakai format lama ORD-1-xxx)
+            try {
+                String[] parts = midtransOrderId.split("-");
+                Long realOrderId = Long.parseLong(parts[1]);
+                order = orderRepository.findById(realOrderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan dari Webhook! ID: " + realOrderId));
+            } catch (Exception e) {
+                throw new RuntimeException("Gagal membaca format Order ID dari Midtrans: " + midtransOrderId);
+            }
         }
-        Long realOrderId = Long.parseLong(parts[1]);
-
-        // Cari pesanannya di database
-        Order order = orderRepository.findById(realOrderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan dari Webhook!"));
 
         // Logika Status Pembayaran Midtrans
         if (transactionStatus.equals("settlement") || transactionStatus.equals("capture")) {
             if (fraudStatus != null && fraudStatus.equals("challenge")) {
-                // Jangan diapa-apakan, nunggu review manual Midtrans
+                // Menunggu review manual Midtrans
             } else {
                 // 💥 UANG MASUK! UBAH STATUS ORDER JADI PAID 💥
                 if (order.getStatus() == OrderStatus.PENDING) {
                     order.setStatus(OrderStatus.PAID);
-                    order.setEscrowStatus(EscrowStatus.HELD);
+                    order.setEscrowStatus(com.ecommerce.backend.models.EscrowStatus.HELD); // Tahan uang di brankas Nexia
                     orderRepository.save(order);
                     
-                    // Cetak Kwitansi Digital (Optional, agar history rapi)
+                    // Cetak Kwitansi Digital
                     Payment payment = Payment.builder()
                             .order(order)
                             .transactionId(midtransOrderId)
