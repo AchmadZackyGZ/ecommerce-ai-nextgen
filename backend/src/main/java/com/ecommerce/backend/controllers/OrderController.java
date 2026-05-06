@@ -73,4 +73,38 @@ public class OrderController {
 
         return ResponseEntity.ok(response);
     }
+
+    // --- 4. API KEEMPAT: (KHUSUS SELLER) Melihat Pesanan Masuk ke Tokonya ---
+    @GetMapping("/shop")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getShopOrders(Principal principal) {
+        
+        List<OrderResponse> shopOrders = orderService.getShopOrders(principal.getName());
+
+        ApiResponse<List<OrderResponse>> response = ApiResponse.<List<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Berhasil memuat daftar pesanan masuk ke toko Anda.")
+                .data(shopOrders)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // --- 5. API KELIMA: (KHUSUS SELLER) Memproses Pesanan & Kirim Barang ---
+    @PutMapping("/{orderId}/ship")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<ApiResponse<OrderResponse>> shipOrder(
+            @PathVariable Long orderId,
+            Principal principal
+    ) {
+        OrderResponse shippedOrder = orderService.shipOrder(orderId, principal.getName());
+
+        ApiResponse<OrderResponse> response = ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Pesanan berhasil di-update menjadi DIKIRIM!")
+                .data(shippedOrder)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
 }
