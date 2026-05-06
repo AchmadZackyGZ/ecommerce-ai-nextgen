@@ -35,30 +35,41 @@ public class ReviewService {
     private CloudinaryService cloudinaryService;
 
     // --- 1. FITUR MENAMBAH REVIEW & UPLOAD FOTO ---
-    public ReviewResponse addReview(Long productId, Integer rating, String comment, MultipartFile image, String userEmail) {
+    public ReviewResponse addReview(Long orderId ,Long productId, Integer rating, String comment, MultipartFile image, String userEmail) {
         
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan!"));
 
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan!"));
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Produk tidak ditemukan!"));
 
-        // 🔥 VALIDASI 1: Apakah user sudah pernah mereview barang ini?
-        if (reviewRepository.existsByProductAndUser(product, user)) {
-            throw new BadRequestException("Anda sudah memberikan ulasan untuk produk ini!");
+        // 🛡️ VALIDASI 1: ANTI-HACKER (Pastikan order ini milik user yang sedang login)
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new BadRequestException("Akses ditolak! Ini bukan pesanan Anda.");
         }
 
-        // 🔥 VALIDASI 2: Apakah user BENAR-BENAR sudah membeli barang ini dan statusnya COMPLETED?
-        boolean hasBought = orderRepository.findByUser(user).stream()
-                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
-                .flatMap(order -> order.getOrderItems().stream())
+        // 🛡️ VALIDASI 2: Pastikan status pesanan sudah COMPLETED (Diterima)
+        if (order.getStatus() != OrderStatus.COMPLETED) {
+            throw new BadRequestException("Anda hanya bisa memberi ulasan setelah pesanan berstatus Selesai (Diterima)!");
+        }
+
+        // 🛡️ VALIDASI 3: Pastikan produk ini BENAR-BENAR ada di dalam Invoice pesanan tersebut
+        boolean isProductInOrder = order.getOrderItems().stream()
                 .anyMatch(item -> item.getVariant().getProduct().getId().equals(productId));
-
-        if (!hasBought) {
-            throw new BadRequestException("Ditolak! Anda belum pernah membeli barang ini atau pesanan belum Selesai (COMPLETED).");
+        
+        if (!isProductInOrder) {
+            throw new BadRequestException("Produk ini tidak ada dalam daftar pesanan Anda!");
         }
 
-        // 🔥 VALIDASI 3: Batas Bintang
+        // 🛡️ VALIDASI 4: THE MAGIC LOGIC (1 Transaksi = 1 Review)
+        if (reviewRepository.existsByOrderAndProduct(order, product)) {
+            throw new BadRequestException("Anda sudah memberikan ulasan untuk produk ini pada pesanan tersebut!");
+        }
+
+        // 🛡️ VALIDASI 5: Batas Bintang
         if (rating < 1 || rating > 5) {
             throw new BadRequestException("Rating harus berada di antara 1 hingga 5 bintang!");
         }
@@ -71,6 +82,7 @@ public class ReviewService {
 
         // Eksekusi Simpan ke Database
         Review review = Review.builder()
+                .order(order)
                 .product(product)
                 .user(user)
                 .rating(rating)
