@@ -95,7 +95,7 @@ export default function SellerOrders() {
   };
 
   return (
-    <div className="flex flex-col h-full animate-in fade-in duration-500 pb-20">
+    <div className="flex flex-col animate-in fade-in duration-500 pb-10">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-white tracking-wide flex items-center gap-2">
           <Package className="text-cyan-400" /> Pesanan Masuk

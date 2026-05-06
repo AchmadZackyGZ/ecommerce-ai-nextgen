@@ -4,6 +4,7 @@ import com.ecommerce.backend.dtos.PaymentRequest;
 import com.ecommerce.backend.dtos.PaymentResponse;
 import com.ecommerce.backend.exceptions.BadRequestException;
 import com.ecommerce.backend.exceptions.ResourceNotFoundException;
+import com.ecommerce.backend.models.EscrowStatus;
 import com.ecommerce.backend.models.Order;
 import com.ecommerce.backend.models.OrderStatus;
 import com.ecommerce.backend.models.Payment;
@@ -163,6 +164,7 @@ public class PaymentService {
                 // 💥 UANG MASUK! UBAH STATUS ORDER JADI PAID 💥
                 if (order.getStatus() == OrderStatus.PENDING) {
                     order.setStatus(OrderStatus.PAID);
+                    order.setEscrowStatus(EscrowStatus.HELD);
                     orderRepository.save(order);
                     
                     // Cetak Kwitansi Digital (Optional, agar history rapi)
