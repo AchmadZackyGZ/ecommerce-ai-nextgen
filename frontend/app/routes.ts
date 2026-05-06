@@ -26,5 +26,6 @@ export default [
     route("seller/products/new", "routes/seller.products.new.tsx"),
     route("seller/products/:id/edit", "routes/seller.products.$id.edit.tsx"),
     route("seller/finance", "routes/seller.finance.tsx"),
+    route("seller/orders", "routes/seller.orders.tsx"),
   ]),
 ] satisfies RouteConfig;
