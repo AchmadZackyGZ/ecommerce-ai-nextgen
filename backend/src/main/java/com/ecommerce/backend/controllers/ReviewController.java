@@ -24,13 +24,14 @@ public class ReviewController {
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('SELLER')")
     public ResponseEntity<ApiResponse<ReviewResponse>> addReview(
+            @RequestParam("orderId") Long orderId,
             @RequestParam("productId") Long productId,
             @RequestParam("rating") Integer rating,
             @RequestParam(value = "comment", required = false) String comment,
             @RequestParam(value = "image", required = false) MultipartFile image,
             Principal principal
     ) {
-        ReviewResponse review = reviewService.addReview(productId, rating, comment, image, principal.getName());
+        ReviewResponse review = reviewService.addReview(orderId ,productId, rating, comment, image, principal.getName());
 
         ApiResponse<ReviewResponse> response = ApiResponse.<ReviewResponse>builder()
                 .status(HttpStatus.CREATED.value())
